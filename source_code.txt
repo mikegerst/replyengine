@@ -1,0 +1,2228 @@
+﻿===== C:\Users\mikeg\replyengine\app\(auth)\login\page.tsx =====
+'use client'
+
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    router.push('/dashboard')
+    router.refresh()
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">ReplyEngine</h1>
+          <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gray-900 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
+
+        <p className="text-center text-sm text-gray-500 mt-4">
+          Don&apos;t have an account?{' '}
+          <Link href="/signup" className="text-gray-900 font-medium hover:underline">
+            Sign up
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(auth)\signup\page.tsx =====
+'use client'
+
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+export default function SignupPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    router.push('/dashboard')
+    router.refresh()
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">ReplyEngine</h1>
+          <p className="text-sm text-gray-500 mt-1">Create your account</p>
+        </div>
+
+        <form onSubmit={handleSignup} className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+            />
+            <p className="text-xs text-gray-400 mt-1">Minimum 6 characters</p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gray-900 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Creating account...' : 'Create account'}
+          </button>
+        </form>
+
+        <p className="text-center text-sm text-gray-500 mt-4">
+          Already have an account?{' '}
+          <Link href="/login" className="text-gray-900 font-medium hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\analytics\page.tsx =====
+export default function AnalyticsPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+      <p className="mt-2 text-sm text-gray-500">Review trends and response metrics.</p>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\billing\page.tsx =====
+export default function BillingPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
+      <p className="mt-2 text-sm text-gray-500">Manage your subscription and payment method.</p>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\onboarding\page.tsx =====
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+
+const BUSINESS_TYPES = [
+  'Plumber',
+  'Electrician',
+  'HVAC',
+  'General Contractor',
+  'Landscaper',
+  'Roofing',
+  'Painter',
+  'Cleaning Service',
+  'Auto Repair',
+  'Restaurant',
+  'Salon / Spa',
+  'Dentist',
+  'Other',
+]
+
+const TONES = [
+  { value: 'professional', label: 'Professional', desc: 'Polished and business-appropriate' },
+  { value: 'friendly', label: 'Friendly', desc: 'Warm and approachable' },
+  { value: 'casual', label: 'Casual', desc: 'Relaxed and conversational' },
+  { value: 'formal', label: 'Formal', desc: 'Traditional and respectful' },
+] as const
+
+const LENGTHS = [
+  { value: 'short', label: 'Short', desc: '2-3 sentences' },
+  { value: 'medium', label: 'Medium', desc: '3-5 sentences' },
+  { value: 'long', label: 'Long', desc: '5-7 sentences' },
+] as const
+
+export default function OnboardingPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const [name, setName] = useState('')
+  const [businessType, setBusinessType] = useState('')
+  const [tone, setTone] = useState('professional')
+  const [responseLength, setResponseLength] = useState('medium')
+  const [customInstructions, setCustomInstructions] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    try {
+      const res = await fetch('/api/businesses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          business_type: businessType || undefined,
+          tone,
+          response_length: responseLength,
+          custom_instructions: customInstructions || undefined,
+        }),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        setError(json.error ?? 'Something went wrong')
+        return
+      }
+
+      router.push('/dashboard')
+      router.refresh()
+    } catch {
+      setError('Failed to create business. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="max-w-lg mx-auto">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Set up your business</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Tell us about your business so we can tailor AI responses to match your brand.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <div className="bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md">
+            {error}
+          </div>
+        )}
+
+        {/* Business name */}
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            Business name
+          </label>
+          <input
+            id="name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            placeholder="e.g. Mike's Plumbing"
+          />
+        </div>
+
+        {/* Business type */}
+        <div>
+          <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
+            Business type
+          </label>
+          <select
+            id="type"
+            value={businessType}
+            onChange={(e) => setBusinessType(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          >
+            <option value="">Select a type</option>
+            {BUSINESS_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Response tone */}
+        <div>
+          <p className="block text-sm font-medium text-gray-700 mb-2">Response tone</p>
+          <div className="grid grid-cols-2 gap-2">
+            {TONES.map((t) => (
+              <label
+                key={t.value}
+                className={`flex flex-col p-3 rounded-md border cursor-pointer transition-colors ${
+                  tone === t.value
+                    ? 'border-gray-900 bg-gray-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="tone"
+                  value={t.value}
+                  checked={tone === t.value}
+                  onChange={(e) => setTone(e.target.value)}
+                  className="sr-only"
+                />
+                <span className="text-sm font-medium text-gray-900">{t.label}</span>
+                <span className="text-xs text-gray-400 mt-0.5">{t.desc}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Response length */}
+        <div>
+          <p className="block text-sm font-medium text-gray-700 mb-2">Response length</p>
+          <div className="grid grid-cols-3 gap-2">
+            {LENGTHS.map((l) => (
+              <label
+                key={l.value}
+                className={`flex flex-col items-center p-3 rounded-md border cursor-pointer transition-colors ${
+                  responseLength === l.value
+                    ? 'border-gray-900 bg-gray-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="length"
+                  value={l.value}
+                  checked={responseLength === l.value}
+                  onChange={(e) => setResponseLength(e.target.value)}
+                  className="sr-only"
+                />
+                <span className="text-sm font-medium text-gray-900">{l.label}</span>
+                <span className="text-xs text-gray-400">{l.desc}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom instructions */}
+        <div>
+          <label htmlFor="instructions" className="block text-sm font-medium text-gray-700 mb-1">
+            Custom instructions <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <textarea
+            id="instructions"
+            value={customInstructions}
+            onChange={(e) => setCustomInstructions(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-y"
+            placeholder="e.g. Always mention our 24/7 emergency service. Offer a 10% discount to unhappy customers."
+          />
+        </div>
+
+        <Button type="submit" disabled={loading} className="w-full">
+          {loading ? 'Setting up...' : 'Continue to dashboard'}
+        </Button>
+      </form>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\recovery\page.tsx =====
+export default function RecoveryPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-gray-900">Recovery</h1>
+      <p className="mt-2 text-sm text-gray-500">Negative review recovery outreach.</p>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\reviews\page.tsx =====
+import { ReviewsList } from '@/components/dashboard/reviews-list'
+
+export default function ReviewsPage() {
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Reviews</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage and respond to your Google reviews.
+        </p>
+      </div>
+      <ReviewsList />
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\settings\page.tsx =====
+export default function SettingsPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+      <p className="mt-2 text-sm text-gray-500">Business and notification preferences.</p>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\page.tsx =====
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import type { DashboardStats, Review } from '@/lib/types/database'
+import { StatCard } from '@/components/dashboard/stat-card'
+import { ReviewCard } from '@/components/dashboard/review-card'
+
+export default function OverviewPage() {
+  const router = useRouter()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [recentReviews, setRecentReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(true)
+  const [businessName, setBusinessName] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+
+      // Check if user has a business
+      const { data: businesses } = await supabase
+        .from('businesses')
+        .select('id, name')
+        .limit(1)
+
+      if (!businesses || businesses.length === 0) {
+        router.push('/dashboard/onboarding')
+        return
+      }
+
+      setBusinessName(businesses[0].name)
+
+      // Fetch stats and recent reviews in parallel
+      const [statsRes, reviewsRes] = await Promise.all([
+        fetch('/api/dashboard/stats'),
+        fetch('/api/reviews?per_page=5'),
+      ])
+
+      const [statsJson, reviewsJson] = await Promise.all([
+        statsRes.json(),
+        reviewsRes.json(),
+      ])
+
+      setStats(statsJson.data ?? null)
+      setRecentReviews(reviewsJson.data ?? [])
+      setLoading(false)
+    }
+
+    load()
+  }, [router])
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-6">
+        <div className="h-8 bg-gray-100 rounded w-1/3" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-gray-100 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  function handleReviewUpdate(updated: Review) {
+    setRecentReviews((prev) =>
+      prev.map((r) => (r.id === updated.id ? updated : r))
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
+        {businessName && (
+          <p className="mt-1 text-sm text-gray-500">{businessName}</p>
+        )}
+      </div>
+
+      {/* Stats grid */}
+      {stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard
+            label="Total Reviews"
+            value={stats.totalReviews}
+          />
+          <StatCard
+            label="Pending Responses"
+            value={stats.pendingResponses}
+            sublabel="Need attention"
+          />
+          <StatCard
+            label="Avg Rating"
+            value={stats.avgRating > 0 ? `${stats.avgRating} / 5` : 'â€”'}
+          />
+          <StatCard
+            label="Response Rate"
+            value={stats.responseRate > 0 ? `${stats.responseRate}%` : 'â€”'}
+            sublabel="Reviews responded to"
+          />
+        </div>
+      )}
+
+      {/* Recent reviews */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Reviews</h2>
+        {recentReviews.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+            <p className="text-gray-500 text-sm">
+              No reviews yet. Once you connect your Google Business Profile,
+              reviews will appear here automatically.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {recentReviews.map((review) => (
+              <ReviewCard
+                key={review.id}
+                review={review}
+                onUpdate={handleReviewUpdate}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(dashboard)\layout.tsx =====
+'use client'
+
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+
+const navItems = [
+  { label: 'Overview', href: '/dashboard', icon: OverviewIcon },
+  { label: 'Reviews', href: '/dashboard/reviews', icon: ReviewsIcon },
+  { label: 'Recovery', href: '/dashboard/recovery', icon: RecoveryIcon },
+  { label: 'Analytics', href: '/dashboard/analytics', icon: AnalyticsIcon },
+  { label: 'Settings', href: '/dashboard/settings', icon: SettingsIcon },
+  { label: 'Billing', href: '/dashboard/billing', icon: BillingIcon },
+]
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function getUser() {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserEmail(user?.email ?? null)
+    }
+    getUser()
+  }, [supabase.auth])
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+            <span className="text-lg font-bold text-gray-900">ReplyEngine</span>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-3 py-4 space-y-1">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-gray-900 text-white'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* User footer */}
+          <div className="border-t border-gray-200 p-4">
+            <div className="text-sm text-gray-500 truncate mb-2">
+              {userEmail}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <div className="lg:pl-64">
+        {/* Mobile header */}
+        <header className="sticky top-0 z-30 flex items-center h-16 px-4 bg-white border-b border-gray-200 lg:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="ml-4 text-lg font-bold text-gray-900">ReplyEngine</span>
+        </header>
+
+        {/* Page content */}
+        <main className="p-6 lg:p-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  )
+}
+
+// Simple icon components
+function OverviewIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
+    </svg>
+  )
+}
+
+function ReviewsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+    </svg>
+  )
+}
+
+function RecoveryIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+    </svg>
+  )
+}
+
+function AnalyticsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  )
+}
+
+function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  )
+}
+
+function BillingIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    </svg>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(marketing)\page.tsx =====
+import Link from 'next/link'
+
+export default function HomePage() {
+  return (
+    <div className="min-h-screen bg-white">
+      <header className="border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <span className="text-lg font-bold text-gray-900">ReplyEngine</span>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/login"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              className="text-sm bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
+            >
+              Get started
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-4 py-24 text-center">
+        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight">
+          Respond to every review
+          <br />
+          <span className="text-gray-400">with AI precision</span>
+        </h1>
+        <p className="mt-6 text-lg text-gray-500 max-w-2xl mx-auto">
+          ReplyEngine connects to your Google Business Profile, drafts personalized
+          responses to every review, and lets you approve with one tap.
+        </p>
+        <div className="mt-10">
+          <Link
+            href="/signup"
+            className="inline-block bg-gray-900 text-white px-8 py-3 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors"
+          >
+            Start free trial
+          </Link>
+        </div>
+      </main>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\api\businesses\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { CreateBusinessSchema } from '@/lib/types/api'
+import { NextResponse } from 'next/server'
+
+export async function GET() {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data, error } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('owner_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to fetch businesses' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data })
+}
+
+export async function POST(request: Request) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body: unknown = await request.json()
+  const parsed = CreateBusinessSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+      { status: 400 }
+    )
+  }
+
+  const { data, error } = await supabase
+    .from('businesses')
+    .insert({
+      owner_id: user.id,
+      name: parsed.data.name,
+      business_type: parsed.data.business_type ?? null,
+      tone: parsed.data.tone,
+      response_length: parsed.data.response_length,
+      custom_instructions: parsed.data.custom_instructions ?? null,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to create business' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data }, { status: 201 })
+}
+===== C:\Users\mikeg\replyengine\app\api\dashboard\stats\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import type { DashboardStats } from '@/lib/types/database'
+import { NextResponse } from 'next/server'
+
+export async function GET() {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Get user's business
+  const { data: businesses } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
+    .limit(1)
+
+  if (!businesses || businesses.length === 0) {
+    const emptyStats: DashboardStats = {
+      totalReviews: 0,
+      pendingResponses: 0,
+      avgRating: 0,
+      responseRate: 0,
+      reviewsByStatus: { pending: 0, draft: 0, approved: 0, posted: 0, skipped: 0 },
+    }
+    return NextResponse.json({ data: emptyStats })
+  }
+
+  const businessId = businesses[0].id
+
+  // Fetch all reviews for this business
+  const { data: reviews, error } = await supabase
+    .from('reviews')
+    .select('star_rating, response_status')
+    .eq('business_id', businessId)
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
+  }
+
+  const total = reviews?.length ?? 0
+  const statusCounts = { pending: 0, draft: 0, approved: 0, posted: 0, skipped: 0 }
+  let ratingSum = 0
+
+  for (const r of reviews ?? []) {
+    const status = r.response_status as keyof typeof statusCounts
+    if (status in statusCounts) {
+      statusCounts[status]++
+    }
+    ratingSum += r.star_rating
+  }
+
+  const stats: DashboardStats = {
+    totalReviews: total,
+    pendingResponses: statusCounts.pending + statusCounts.draft,
+    avgRating: total > 0 ? Math.round((ratingSum / total) * 10) / 10 : 0,
+    responseRate: total > 0 ? Math.round((statusCounts.posted / total) * 100) : 0,
+    reviewsByStatus: statusCounts,
+  }
+
+  return NextResponse.json({ data: stats })
+}
+===== C:\Users\mikeg\replyengine\app\api\reviews\[reviewId]\generate\route.ts =====
+===== C:\Users\mikeg\replyengine\app\api\reviews\[reviewId]\route.ts =====
+===== C:\Users\mikeg\replyengine\app\api\reviews\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { ReviewsQuerySchema } from '@/lib/types/api'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(request: NextRequest) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Get user's business
+  const { data: businesses } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
+    .limit(1)
+
+  if (!businesses || businesses.length === 0) {
+    return NextResponse.json({ data: [], total: 0 })
+  }
+
+  const businessId = businesses[0].id
+
+  // Parse query params
+  const searchParams = Object.fromEntries(request.nextUrl.searchParams)
+  const parsed = ReviewsQuerySchema.safeParse(searchParams)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid query' },
+      { status: 400 }
+    )
+  }
+
+  const { status, star_rating, page, per_page } = parsed.data
+  const offset = (page - 1) * per_page
+
+  let query = supabase
+    .from('reviews')
+    .select('*', { count: 'exact' })
+    .eq('business_id', businessId)
+    .order('review_date', { ascending: false })
+    .range(offset, offset + per_page - 1)
+
+  if (status) {
+    query = query.eq('response_status', status)
+  }
+
+  if (star_rating) {
+    query = query.eq('star_rating', star_rating)
+  }
+
+  const { data, error, count } = await query
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data, total: count ?? 0, page, per_page })
+}
+===== C:\Users\mikeg\replyengine\app\layout.tsx =====
+import type { Metadata } from 'next'
+import './globals.css'
+
+export const metadata: Metadata = {
+  title: 'ReplyEngine â€” AI Review Response Manager',
+  description: 'Respond to every Google review with AI-powered, personalized responses.',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body className="font-sans antialiased">{children}</body>
+    </html>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\dashboard\review-card.tsx =====
+'use client'
+
+import { useState } from 'react'
+import type { Review } from '@/lib/types/database'
+import { StarRating } from '@/components/dashboard/star-rating'
+import { StatusBadge } from '@/components/dashboard/status-badge'
+import { Button } from '@/components/ui/button'
+import { formatRelativeDate } from '@/lib/utils/format'
+
+interface ReviewCardProps {
+  review: Review
+  onUpdate: (updated: Review) => void
+}
+
+export function ReviewCard({ review, onUpdate }: ReviewCardProps) {
+  const [loading, setLoading] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editedText, setEditedText] = useState(
+    review.edited_response ?? review.ai_response ?? ''
+  )
+
+  async function handleGenerate() {
+    setLoading('generate')
+    try {
+      const res = await fetch(`/api/reviews/${review.id}/generate`, {
+        method: 'POST',
+      })
+      const json = await res.json()
+      if (json.data) {
+        onUpdate(json.data)
+        setEditedText(json.data.ai_response ?? '')
+      }
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleStatusChange(
+    status: Review['response_status'],
+    editedResponse?: string
+  ) {
+    setLoading(status)
+    try {
+      const body: Record<string, unknown> = { status }
+      if (editedResponse !== undefined) {
+        body.edited_response = editedResponse
+      }
+      const res = await fetch(`/api/reviews/${review.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json()
+      if (json.data) {
+        onUpdate(json.data)
+        setEditing(false)
+      }
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const displayResponse = review.edited_response ?? review.ai_response
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-medium text-gray-600">
+              {(review.reviewer_name ?? 'A')[0].toUpperCase()}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {review.reviewer_name ?? 'Anonymous'}
+            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <StarRating rating={review.star_rating} size="sm" />
+              <span className="text-xs text-gray-400">
+                {formatRelativeDate(review.review_date)}
+              </span>
+            </div>
+          </div>
+        </div>
+        <StatusBadge status={review.response_status} />
+      </div>
+
+      {/* Review text */}
+      {review.review_text && (
+        <p className="mt-3 text-sm text-gray-700 leading-relaxed">
+          {review.review_text}
+        </p>
+      )}
+
+      {/* Topics */}
+      {review.key_topics && review.key_topics.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {review.key_topics.map((topic) => (
+            <span
+              key={topic}
+              className="px-2 py-0.5 bg-gray-50 text-gray-500 text-xs rounded"
+            >
+              {topic}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* AI Response */}
+      {displayResponse && !editing && (
+        <div className="mt-4 bg-gray-50 rounded-md p-3">
+          <p className="text-xs font-medium text-gray-400 mb-1">AI Response</p>
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+            {displayResponse}
+          </p>
+        </div>
+      )}
+
+      {/* Editing textarea */}
+      {editing && (
+        <div className="mt-4">
+          <textarea
+            value={editedText}
+            onChange={(e) => setEditedText(e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-y"
+          />
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {review.response_status === 'pending' && (
+          <Button
+            size="sm"
+            onClick={handleGenerate}
+            disabled={loading !== null}
+          >
+            {loading === 'generate' ? 'Generating...' : 'Generate Response'}
+          </Button>
+        )}
+
+        {review.response_status === 'draft' && !editing && (
+          <>
+            <Button
+              size="sm"
+              onClick={() => handleStatusChange('approved')}
+              disabled={loading !== null}
+            >
+              {loading === 'approved' ? 'Approving...' : 'Approve'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setEditedText(displayResponse ?? '')
+                setEditing(true)
+              }}
+            >
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleGenerate}
+              disabled={loading !== null}
+            >
+              {loading === 'generate' ? 'Regenerating...' : 'Regenerate'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleStatusChange('skipped')}
+              disabled={loading !== null}
+            >
+              Skip
+            </Button>
+          </>
+        )}
+
+        {review.response_status === 'draft' && editing && (
+          <>
+            <Button
+              size="sm"
+              onClick={() => handleStatusChange('approved', editedText)}
+              disabled={loading !== null}
+            >
+              {loading === 'approved' ? 'Saving...' : 'Save & Approve'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setEditing(false)}
+            >
+              Cancel
+            </Button>
+          </>
+        )}
+
+        {review.response_status === 'approved' && (
+          <>
+            <Button size="sm" disabled title="Google API integration coming soon">
+              Post to Google
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleStatusChange('draft')}
+              disabled={loading !== null}
+            >
+              Back to Draft
+            </Button>
+          </>
+        )}
+
+        {review.response_status === 'posted' && (
+          <span className="text-xs text-gray-400">
+            Posted {formatRelativeDate(review.posted_at)}
+          </span>
+        )}
+
+        {review.response_status === 'skipped' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleGenerate}
+            disabled={loading !== null}
+          >
+            {loading === 'generate' ? 'Generating...' : 'Generate Response'}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\dashboard\reviews-list.tsx =====
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import type { Review } from '@/lib/types/database'
+import { ReviewCard } from '@/components/dashboard/review-card'
+import { Button } from '@/components/ui/button'
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'posted', label: 'Posted' },
+  { value: 'skipped', label: 'Skipped' },
+] as const
+
+const RATING_OPTIONS = [
+  { value: '', label: 'All ratings' },
+  { value: '5', label: '5 stars' },
+  { value: '4', label: '4 stars' },
+  { value: '3', label: '3 stars' },
+  { value: '2', label: '2 stars' },
+  { value: '1', label: '1 star' },
+] as const
+
+export function ReviewsList() {
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('')
+  const [ratingFilter, setRatingFilter] = useState('')
+
+  const perPage = 20
+
+  const fetchReviews = useCallback(async () => {
+    setLoading(true)
+    const params = new URLSearchParams({ page: String(page), per_page: String(perPage) })
+    if (statusFilter) params.set('status', statusFilter)
+    if (ratingFilter) params.set('star_rating', ratingFilter)
+
+    try {
+      const res = await fetch(`/api/reviews?${params}`)
+      const json = await res.json()
+      setReviews(json.data ?? [])
+      setTotal(json.total ?? 0)
+    } finally {
+      setLoading(false)
+    }
+  }, [page, statusFilter, ratingFilter])
+
+  useEffect(() => {
+    fetchReviews()
+  }, [fetchReviews])
+
+  function handleReviewUpdate(updated: Review) {
+    setReviews((prev) =>
+      prev.map((r) => (r.id === updated.id ? updated : r))
+    )
+  }
+
+  const totalPages = Math.ceil(total / perPage)
+
+  return (
+    <div>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value)
+            setPage(1)
+          }}
+          className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        >
+          {STATUS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={ratingFilter}
+          onChange={(e) => {
+            setRatingFilter(e.target.value)
+            setPage(1)
+          }}
+          className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        >
+          {RATING_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+
+        <span className="flex items-center text-sm text-gray-400">
+          {total} review{total !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* Review cards */}
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse"
+            >
+              <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
+              <div className="h-3 bg-gray-100 rounded w-2/3 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : reviews.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-sm">
+            {statusFilter || ratingFilter
+              ? 'No reviews match your filters.'
+              : 'No reviews yet. Reviews will appear here once synced from Google.'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {reviews.map((review) => (
+            <ReviewCard
+              key={review.id}
+              review={review}
+              onUpdate={handleReviewUpdate}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-gray-500">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\dashboard\star-rating.tsx =====
+interface StarRatingProps {
+  rating: number
+  size?: 'sm' | 'md'
+}
+
+export function StarRating({ rating, size = 'md' }: StarRatingProps) {
+  const sizeClass = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5'
+
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <svg
+          key={star}
+          className={`${sizeClass} ${
+            star <= rating ? 'text-yellow-400' : 'text-gray-200'
+          }`}
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\dashboard\stat-card.tsx =====
+interface StatCardProps {
+  label: string
+  value: string | number
+  sublabel?: string
+}
+
+export function StatCard({ label, value, sublabel }: StatCardProps) {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
+      {sublabel && (
+        <p className="mt-1 text-xs text-gray-400">{sublabel}</p>
+      )}
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\dashboard\status-badge.tsx =====
+const statusConfig = {
+  pending: { label: 'Pending', className: 'bg-gray-100 text-gray-700' },
+  draft: { label: 'Draft', className: 'bg-yellow-100 text-yellow-800' },
+  approved: { label: 'Approved', className: 'bg-blue-100 text-blue-800' },
+  posted: { label: 'Posted', className: 'bg-green-100 text-green-800' },
+  skipped: { label: 'Skipped', className: 'bg-red-100 text-red-700' },
+} as const
+
+interface StatusBadgeProps {
+  status: keyof typeof statusConfig
+}
+
+export function StatusBadge({ status }: StatusBadgeProps) {
+  const config = statusConfig[status]
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${config.className}`}
+    >
+      {config.label}
+    </span>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\ui\button.tsx =====
+import { forwardRef } from 'react'
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
+  size?: 'sm' | 'md' | 'lg'
+}
+
+const variantStyles = {
+  primary:
+    'bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-400',
+  secondary:
+    'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100',
+  danger:
+    'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300',
+  ghost:
+    'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-300',
+}
+
+const sizeStyles = {
+  sm: 'px-3 py-1.5 text-xs',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-6 py-3 text-sm',
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = 'primary', size = 'md', className = '', children, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        className={`inline-flex items-center justify-center font-medium rounded-md transition-colors disabled:cursor-not-allowed ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+        {...props}
+      >
+        {children}
+      </button>
+    )
+  }
+)
+
+Button.displayName = 'Button'
+===== C:\Users\mikeg\replyengine\lib\ai\generate-response.ts =====
+import Anthropic from '@anthropic-ai/sdk'
+import type { Business, Review, ResponsePattern } from '@/lib/types/database'
+
+const LENGTH_GUIDANCE = {
+  short: 'Keep your response concise â€” around 2-3 sentences (roughly 50 words).',
+  medium: 'Write a moderate-length response â€” around 3-5 sentences (roughly 100 words).',
+  long: 'Write a thorough response â€” around 5-7 sentences (roughly 150 words).',
+} as const
+
+interface GenerateResponseResult {
+  response: string
+  sentiment: 'positive' | 'neutral' | 'negative'
+  keyTopics: string[]
+}
+
+export async function generateReviewResponse(
+  review: Review,
+  business: Business,
+  patterns: ResponsePattern[] = []
+): Promise<GenerateResponseResult> {
+  const client = new Anthropic()
+
+  const matchingPatterns = patterns.filter(
+    (p) =>
+      p.is_active &&
+      review.star_rating >= p.star_rating_min &&
+      review.star_rating <= p.star_rating_max
+  )
+
+  const systemPrompt = buildSystemPrompt(business, matchingPatterns)
+  const userPrompt = buildUserPrompt(review)
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+  })
+
+  const rawText =
+    message.content[0].type === 'text' ? message.content[0].text : ''
+
+  return parseResponse(rawText)
+}
+
+function buildSystemPrompt(
+  business: Business,
+  patterns: ResponsePattern[]
+): string {
+  const parts: string[] = [
+    `You are a review response assistant for "${business.name}"${business.business_type ? `, a ${business.business_type} business` : ''}.`,
+    `Write responses in a ${business.tone} tone.`,
+    LENGTH_GUIDANCE[business.response_length],
+    '',
+    'Guidelines:',
+    '- Address the reviewer by their first name when available',
+    '- Reference specific details from their review to show you read it',
+    '- For positive reviews: express genuine gratitude and reinforce what they enjoyed',
+    '- For negative reviews: acknowledge their experience with empathy, offer to make it right, provide a way to reach you directly',
+    '- Never admit legal fault or liability',
+    '- Do not use generic phrases like "valued customer" or "we appreciate your feedback"',
+    '- Mention the business name naturally once',
+    '- Do not use exclamation marks excessively',
+  ]
+
+  if (business.custom_instructions) {
+    parts.push('', 'Additional business instructions:', business.custom_instructions)
+  }
+
+  if (patterns.length > 0) {
+    parts.push('', 'Response pattern instructions for this rating range:')
+    for (const p of patterns) {
+      parts.push(`- ${p.name}: ${p.template_instructions}`)
+    }
+  }
+
+  parts.push(
+    '',
+    'IMPORTANT: Format your output exactly as follows:',
+    '---RESPONSE---',
+    '(your review response here)',
+    '---METADATA---',
+    '{"sentiment": "positive|neutral|negative", "topics": ["topic1", "topic2"]}'
+  )
+
+  return parts.join('\n')
+}
+
+function buildUserPrompt(review: Review): string {
+  const parts = [
+    `Reviewer: ${review.reviewer_name ?? 'Anonymous'}`,
+    `Rating: ${review.star_rating}/5 stars`,
+  ]
+
+  if (review.review_date) {
+    parts.push(`Date: ${review.review_date}`)
+  }
+
+  parts.push(
+    '',
+    'Review:',
+    review.review_text ?? '(No written review â€” rating only)'
+  )
+
+  return parts.join('\n')
+}
+
+function parseResponse(raw: string): GenerateResponseResult {
+  const responsePart = raw.split('---METADATA---')[0]
+  const response = responsePart
+    .replace('---RESPONSE---', '')
+    .trim()
+
+  let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral'
+  let keyTopics: string[] = []
+
+  const metadataMatch = raw.match(/---METADATA---\s*(\{[\s\S]*\})/)
+  if (metadataMatch) {
+    try {
+      const metadata = JSON.parse(metadataMatch[1]) as {
+        sentiment?: string
+        topics?: string[]
+      }
+      if (
+        metadata.sentiment === 'positive' ||
+        metadata.sentiment === 'neutral' ||
+        metadata.sentiment === 'negative'
+      ) {
+        sentiment = metadata.sentiment
+      }
+      if (Array.isArray(metadata.topics)) {
+        keyTopics = metadata.topics.filter(
+          (t): t is string => typeof t === 'string'
+        )
+      }
+    } catch {
+      // fallback: infer sentiment from star rating
+    }
+  }
+
+  // Fallback sentiment from rating if parsing failed
+  if (!metadataMatch) {
+    // The response text is the full raw text if no markers found
+    return {
+      response: raw.trim(),
+      sentiment: 'neutral',
+      keyTopics: [],
+    }
+  }
+
+  return { response, sentiment, keyTopics }
+}
+===== C:\Users\mikeg\replyengine\lib\supabase\client.ts =====
+import { createBrowserClient } from '@supabase/ssr'
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+===== C:\Users\mikeg\replyengine\lib\supabase\middleware.ts =====
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function updateSession(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({ name, value, ...options })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({ name, value, ...options })
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: '', ...options })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Protected routes: redirect to login if not authenticated
+  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Redirect authenticated users away from auth pages
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  return response
+}
+===== C:\Users\mikeg\replyengine\lib\supabase\server.ts =====
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+export function createClient() {
+  const cookieStore = cookies()
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch {
+            // The `set` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing sessions.
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch {
+            // The `delete` method was called from a Server Component.
+          }
+        },
+      },
+    }
+  )
+}
+===== C:\Users\mikeg\replyengine\lib\types\api.ts =====
+import { z } from 'zod'
+
+export const CreateBusinessSchema = z.object({
+  name: z.string().min(1, 'Business name is required').max(200),
+  business_type: z.string().max(100).optional(),
+  tone: z.enum(['professional', 'friendly', 'casual', 'formal']).default('professional'),
+  response_length: z.enum(['short', 'medium', 'long']).default('medium'),
+  custom_instructions: z.string().max(2000).optional(),
+})
+
+export type CreateBusinessInput = z.infer<typeof CreateBusinessSchema>
+
+export const UpdateBusinessSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  business_type: z.string().max(100).optional(),
+  tone: z.enum(['professional', 'friendly', 'casual', 'formal']).optional(),
+  response_length: z.enum(['short', 'medium', 'long']).optional(),
+  custom_instructions: z.string().max(2000).nullable().optional(),
+  auto_respond: z.boolean().optional(),
+  auto_respond_min_stars: z.number().min(1).max(5).optional(),
+  notification_email: z.boolean().optional(),
+  notification_sms: z.boolean().optional(),
+  phone: z.string().max(20).nullable().optional(),
+})
+
+export type UpdateBusinessInput = z.infer<typeof UpdateBusinessSchema>
+
+export const UpdateReviewStatusSchema = z.object({
+  status: z.enum(['pending', 'draft', 'approved', 'posted', 'skipped']),
+  edited_response: z.string().max(5000).optional(),
+})
+
+export type UpdateReviewStatusInput = z.infer<typeof UpdateReviewStatusSchema>
+
+export const ReviewsQuerySchema = z.object({
+  status: z.enum(['pending', 'draft', 'approved', 'posted', 'skipped']).optional(),
+  star_rating: z.coerce.number().min(1).max(5).optional(),
+  page: z.coerce.number().min(1).default(1),
+  per_page: z.coerce.number().min(1).max(100).default(20),
+})
+
+export type ReviewsQuery = z.infer<typeof ReviewsQuerySchema>
+
+export type ApiResponse<T> = { data: T } | { error: string }
+===== C:\Users\mikeg\replyengine\lib\types\database.ts =====
+export interface Business {
+  id: string
+  owner_id: string
+  name: string
+  google_place_id: string | null
+  google_account_id: string | null
+  google_location_id: string | null
+  google_access_token: string | null
+  google_refresh_token: string | null
+  google_token_expires_at: string | null
+  business_type: string | null
+  tone: 'professional' | 'friendly' | 'casual' | 'formal'
+  response_length: 'short' | 'medium' | 'long'
+  custom_instructions: string | null
+  auto_respond: boolean
+  auto_respond_min_stars: number | null
+  notification_email: boolean
+  notification_sms: boolean
+  phone: string | null
+  plan: 'free' | 'pro' | 'enterprise'
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  monthly_response_count: number
+  monthly_response_reset_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Review {
+  id: string
+  business_id: string
+  google_review_id: string | null
+  reviewer_name: string | null
+  reviewer_photo_url: string | null
+  star_rating: number
+  review_text: string | null
+  review_date: string | null
+  ai_response: string | null
+  edited_response: string | null
+  response_status: 'pending' | 'draft' | 'approved' | 'posted' | 'skipped'
+  posted_at: string | null
+  sentiment: 'positive' | 'neutral' | 'negative' | null
+  key_topics: string[] | null
+  google_response_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ResponsePattern {
+  id: string
+  business_id: string
+  name: string
+  star_rating_min: number
+  star_rating_max: number
+  template_instructions: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface SyncJob {
+  id: string
+  business_id: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  reviews_found: number | null
+  reviews_new: number | null
+  error_message: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+}
+
+export interface RecoveryOutreach {
+  id: string
+  review_id: string
+  business_id: string
+  outreach_type: 'email' | 'sms'
+  message_draft: string | null
+  status: 'draft' | 'sent' | 'responded' | 'resolved' | 'dismissed'
+  sent_at: string | null
+  resolved_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReviewDispute {
+  id: string
+  review_id: string
+  business_id: string
+  reason: string
+  ai_confidence_score: number | null
+  ai_analysis: string | null
+  status: 'detected' | 'flagged' | 'submitted' | 'resolved' | 'dismissed'
+  google_case_id: string | null
+  submitted_at: string | null
+  resolved_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DashboardStats {
+  totalReviews: number
+  pendingResponses: number
+  avgRating: number
+  responseRate: number
+  reviewsByStatus: {
+    pending: number
+    draft: number
+    approved: number
+    posted: number
+    skipped: number
+  }
+}
+===== C:\Users\mikeg\replyengine\lib\utils\format.ts =====
+export function formatDate(dateString: string | null): string {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+export function formatRelativeDate(dateString: string | null): string {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  return formatDate(dateString)
+}
+
+export function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text
+  return text.slice(0, maxLength).trimEnd() + '...'
+}
+===== C:\Users\mikeg\replyengine\lib\utils\plan-limits.ts =====
+import type { Business } from '@/lib/types/database'
+
+export const PLAN_LIMITS = {
+  free: { responsesPerMonth: 10 },
+  pro: { responsesPerMonth: 100 },
+  enterprise: { responsesPerMonth: Infinity },
+} as const
+
+export function canGenerateResponse(business: Business): boolean {
+  const limit = PLAN_LIMITS[business.plan]?.responsesPerMonth ?? 0
+
+  if (business.monthly_response_reset_at) {
+    const resetDate = new Date(business.monthly_response_reset_at)
+    if (resetDate < new Date()) {
+      return true // counter will be reset
+    }
+  }
+
+  return business.monthly_response_count < limit
+}
+
+export function getRemainingResponses(business: Business): number {
+  const limit = PLAN_LIMITS[business.plan]?.responsesPerMonth ?? 0
+  if (limit === Infinity) return Infinity
+  return Math.max(0, limit - business.monthly_response_count)
+}
+===== C:\Users\mikeg\replyengine\scripts\seed.ts =====
+import { config } from 'dotenv'
+import { createClient } from '@supabase/supabase-js'
+
+config({ path: '.env.local' })
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+async function seed() {
+  console.log('Seeding database...')
+
+  // Find the first user to use as owner
+  const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
+
+  if (usersError || !users.users.length) {
+    console.error('No users found. Sign up first, then run seed.')
+    process.exit(1)
+  }
+
+  const ownerId = users.users[0].id
+  console.log(`Using owner: ${users.users[0].email} (${ownerId})`)
+
+  // Check if a business already exists for this user
+  const { data: existing } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', ownerId)
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    console.log('Business already exists â€” deleting old data first...')
+    await supabase.from('reviews').delete().eq('business_id', existing[0].id)
+    await supabase.from('businesses').delete().eq('id', existing[0].id)
+  }
+
+  // Insert business
+  const { data: business, error: bizError } = await supabase
+    .from('businesses')
+    .insert({
+      owner_id: ownerId,
+      name: "Mike's Kitchen & Grill",
+      business_type: 'Restaurant',
+      tone: 'friendly',
+      response_length: 'medium',
+      custom_instructions:
+        'We are a family-owned restaurant known for our wood-fired pizzas and craft cocktails. ' +
+        'Always mention we are open Tuesday through Sunday, 11am-10pm. ' +
+        'For unhappy customers, invite them back for a complimentary appetizer.',
+      auto_respond: false,
+      auto_respond_min_stars: 4,
+      notification_email: true,
+      plan: 'pro',
+      phone: '(555) 234-5678',
+    })
+    .select()
+    .single()
+
+  if (bizError || !business) {
+    console.error('Failed to create business:', bizError?.message)
+    process.exit(1)
+  }
+
+  console.log(`Created business: ${business.name} (${business.id})`)
+
+  // Insert demo reviews
+  const reviews = getDemoReviews(business.id)
+
+  const { data: inserted, error: reviewsError } = await supabase
+    .from('reviews')
+    .insert(reviews)
+    .select()
+
+  if (reviewsError) {
+    console.error('Failed to insert reviews:', reviewsError.message)
+    process.exit(1)
+  }
+
+  console.log(`Inserted ${inserted?.length ?? 0} demo reviews`)
+  console.log('\nSeed complete!')
+}
+
+function getDemoReviews(businessId: string) {
+  const now = Date.now()
+  const day = 86400000
+
+  return [
+    {
+      business_id: businessId,
+      reviewer_name: 'Sarah M.',
+      star_rating: 5,
+      review_text:
+        'Absolutely incredible experience! The wood-fired margherita pizza was the best I\'ve ever had â€” ' +
+        'perfectly charred crust, fresh mozzarella, beautiful basil. Our server Jake was attentive without ' +
+        'being overbearing. The craft old fashioned was top-notch. Will be back every week!',
+      review_date: new Date(now - 2 * day).toISOString(),
+      response_status: 'pending',
+    },
+    {
+      business_id: businessId,
+      reviewer_name: 'Tom R.',
+      star_rating: 5,
+      review_text:
+        'Celebrated our anniversary here and it was perfect. The ambiance is warm and cozy, ' +
+        'the bruschetta appetizer was fresh and flavorful, and the pasta special was outstanding. ' +
+        'Thank you for making our evening so special!',
+      review_date: new Date(now - 3 * day).toISOString(),
+      response_status: 'pending',
+    },
+    {
+      business_id: businessId,
+      reviewer_name: 'Jessica L.',
+      star_rating: 4,
+      review_text:
+        'Great food and nice atmosphere. The pepperoni pizza was delicious and the salad was very fresh. ' +
+        'Only reason for 4 stars is the wait was about 30 minutes even with a reservation on a Saturday night. ' +
+        'Would still recommend though!',
+      review_date: new Date(now - 5 * day).toISOString(),
+      response_status: 'pending',
+    },
+    {
+      business_id: businessId,
+      reviewer_name: 'David K.',
+      star_rating: 4,
+      review_text:
+        'Solid neighborhood restaurant. The burger was cooked exactly how I asked and the fries were crispy. ' +
+        'Beer selection is good. Parking is a bit tricky but worth it.',
+      review_date: new Date(now - 7 * day).toISOString(),
+      response_status: 'pending',
+    },
+    {
+      business_id: businessId,
+      reviewer_name: 'Amanda P.',
+      star_rating: 3,
+      review_text:
+        'Food was decent but not amazing. I ordered the chicken parmesan and it was a bit dry. ' +
+        'The service was friendly enough but they forgot our bread basket twice. ' +
+        'Might give it another try since friends rave about the pizza.',
+      review_date: new Date(now - 10 * day).toISOString(),
+      response_status: 'pending',
+    },
+    {
+      business_id: businessId,
+      reviewer_name: 'Carlos G.',
+      star_rating: 2,
+      review_text:
+        'Waited 45 minutes for our entrees on a Wednesday night when the restaurant was half empty. ' +
+        'The food was lukewarm when it arrived. Asked to speak with a manager but was told none was available. ' +
+        'Disappointing because the food itself actually tasted good when it finally came.',
+      review_date: new Date(now - 12 * day).toISOString(),
+      response_status: 'pending',
+    },
+    {
+      business_id: businessId,
+      reviewer_name: 'Rachel W.',
+      star_rating: 1,
+      review_text:
+        'Terrible experience. Found a hair in my salad, and when I pointed it out the server just ' +
+        'shrugged and offered to bring another one. No apology from management. ' +
+        'The table next to us had a similar complaint about their food. Won\'t be coming back.',
+      review_date: new Date(now - 14 * day).toISOString(),
+      response_status: 'pending',
+    },
+    {
+      business_id: businessId,
+      reviewer_name: 'Brian T.',
+      star_rating: 5,
+      review_text:
+        'Best pizza in town, hands down. We come here at least twice a month. ' +
+        'The kids love the cheese pizza and my wife and I always get the white truffle pizza. ' +
+        'Mike himself came to our table to say hi. Love this place!',
+      review_date: new Date(now - 1 * day).toISOString(),
+      response_status: 'pending',
+    },
+  ]
+}
+
+seed()
+===== C:\Users\mikeg\replyengine\middleware.ts =====
+import { updateSession } from '@/lib/supabase/middleware'
+import type { NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  return await updateSession(request)
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}
+===== C:\Users\mikeg\replyengine\next-env.d.ts =====
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/building-your-application/configuring/typescript for more information.
