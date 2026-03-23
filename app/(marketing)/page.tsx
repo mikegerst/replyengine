@@ -1,4 +1,17 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'ReplyEngine — AI-Powered Google Review Response Manager',
+  description:
+    'Respond to every Google review with AI-powered, personalized responses. Connect your Google Business Profile, get draft responses instantly, and approve with one tap.',
+  openGraph: {
+    title: 'ReplyEngine — AI-Powered Google Review Response Manager',
+    description:
+      'Respond to every Google review with AI-powered, personalized responses. Approve with one tap.',
+    type: 'website',
+  },
+}
 
 export default function HomePage() {
   return (

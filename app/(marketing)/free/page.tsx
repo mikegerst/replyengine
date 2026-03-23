@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: 'Free Google Review Response Generator — ReplyEngine',
   description:
     'Generate professional, personalized responses to Google reviews instantly. Free tool — no signup required. Works for restaurants, dentists, salons, contractors, and more.',
+  openGraph: {
+    title: 'Free Google Review Response Generator',
+    description:
+      'Generate professional, personalized responses to Google reviews instantly. No signup required.',
+    type: 'website',
+  },
 }
 
 const FAQ_ITEMS = [
