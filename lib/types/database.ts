@@ -17,7 +17,7 @@ export interface Business {
   notification_email: boolean
   notification_sms: boolean
   phone: string | null
-  plan: 'free' | 'pro' | 'enterprise'
+  plan: 'free' | 'starter' | 'pro'
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
   monthly_response_count: number

@@ -1,9 +1,9 @@
 import type { Business } from '@/lib/types/database'
 
 export const PLAN_LIMITS = {
-  free: { responsesPerMonth: 10 },
-  pro: { responsesPerMonth: 100 },
-  enterprise: { responsesPerMonth: Infinity },
+  free: { responsesPerMonth: 5 },
+  starter: { responsesPerMonth: 30 },
+  pro: { responsesPerMonth: Infinity },
 } as const
 
 export function canGenerateResponse(business: Business): boolean {
