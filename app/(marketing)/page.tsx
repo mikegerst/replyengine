@@ -8,6 +8,12 @@ export default function HomePage() {
           <span className="text-lg font-bold text-gray-900">ReplyEngine</span>
           <div className="flex items-center gap-4">
             <Link
+              href="/free"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Free Tool
+            </Link>
+            <Link
               href="/login"
               className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
