@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { generateReviewResponse } from '@/lib/ai/generate-response'
+import { analyzeForDispute } from '@/lib/ai/analyze-dispute'
 import { canGenerateResponse } from '@/lib/utils/plan-limits'
 import type { Business, Review, ResponsePattern } from '@/lib/types/database'
 import { NextResponse } from 'next/server'
@@ -99,6 +100,28 @@ export async function POST(
           monthly_response_count: typedBusiness.monthly_response_count + 1,
         })
         .eq('id', typedBusiness.id)
+    }
+
+    // Auto-analyze 1-2 star reviews for potential disputes
+    if (typedReview.star_rating <= 2) {
+      try {
+        const dispute = await analyzeForDispute(typedReview)
+        if (dispute.isDisputable) {
+          await supabase.from('review_disputes').insert({
+            review_id: typedReview.id,
+            business_id: typedBusiness.id,
+            reason: dispute.violations.join(', '),
+            ai_confidence_score: dispute.confidence === 'high' ? 0.9 : dispute.confidence === 'medium' ? 0.6 : 0.3,
+            ai_analysis: dispute.reasoning,
+            violations: dispute.violations,
+            suggested_dispute_text: dispute.suggestedDisputeText,
+            confidence: dispute.confidence,
+            status: 'detected',
+          })
+        }
+      } catch {
+        // Dispute analysis is non-critical — don't fail the response generation
+      }
     }
 
     return NextResponse.json({ data: updated })

@@ -80,6 +80,7 @@ export interface RecoveryOutreach {
   sent_at: string | null
   resolved_at: string | null
   notes: string | null
+  suggested_resolution: string | null
   created_at: string
   updated_at: string
 }
@@ -91,12 +92,23 @@ export interface ReviewDispute {
   reason: string
   ai_confidence_score: number | null
   ai_analysis: string | null
-  status: 'detected' | 'flagged' | 'submitted' | 'resolved' | 'dismissed'
+  violations: string[]
+  suggested_dispute_text: string | null
+  confidence: 'high' | 'medium' | 'low'
+  status: 'detected' | 'flagged' | 'submitted' | 'under_review' | 'removed' | 'denied' | 'dismissed'
   google_case_id: string | null
   submitted_at: string | null
   resolved_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface RecoveryOutreachWithReview extends RecoveryOutreach {
+  reviews: Review
+}
+
+export interface ReviewDisputeWithReview extends ReviewDispute {
+  reviews: Review
 }
 
 export interface DashboardStats {
