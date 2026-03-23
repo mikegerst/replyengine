@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolveBusinessId } from '@/lib/utils/resolve-business'
 import { ReviewsQuerySchema } from '@/lib/types/api'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -10,20 +11,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user's business
-  const { data: businesses } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .limit(1)
+  const requestedId = request.nextUrl.searchParams.get('business_id')
+  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
 
-  if (!businesses || businesses.length === 0) {
+  if (!businessId) {
     return NextResponse.json({ data: [], total: 0 })
   }
 
-  const businessId = businesses[0].id
-
-  // Parse query params
   const searchParams = Object.fromEntries(request.nextUrl.searchParams)
   const parsed = ReviewsQuerySchema.safeParse(searchParams)
 

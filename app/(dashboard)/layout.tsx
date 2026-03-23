@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { BusinessSwitcher } from '@/components/dashboard/business-switcher'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -68,6 +69,9 @@ export default function DashboardLayout({
               </svg>
             </button>
           </div>
+
+          {/* Business switcher */}
+          <BusinessSwitcher />
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1">

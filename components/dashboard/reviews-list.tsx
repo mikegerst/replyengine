@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { Review } from '@/lib/types/database'
+import { getSelectedBusinessId } from '@/lib/utils/selected-business'
 import { ReviewCard } from '@/components/dashboard/review-card'
 import { Button } from '@/components/ui/button'
 
@@ -38,6 +39,8 @@ export function ReviewsList() {
     const params = new URLSearchParams({ page: String(page), per_page: String(perPage) })
     if (statusFilter) params.set('status', statusFilter)
     if (ratingFilter) params.set('star_rating', ratingFilter)
+    const bizId = getSelectedBusinessId()
+    if (bizId) params.set('business_id', bizId)
 
     try {
       const res = await fetch(`/api/reviews?${params}`)

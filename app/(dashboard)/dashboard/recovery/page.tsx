@@ -6,6 +6,7 @@ import type {
   ReviewDisputeWithReview,
   RecoveryOutreachWithReview,
 } from '@/lib/types/database'
+import { buildApiUrl } from '@/lib/utils/selected-business'
 import { DisputeCard } from '@/components/dashboard/dispute-card'
 import { RecoveryCard } from '@/components/dashboard/recovery-card'
 import { StarRating } from '@/components/dashboard/star-rating'
@@ -25,9 +26,9 @@ export default function RecoveryPage() {
     setLoading(true)
     try {
       const [disputeRes, recoveryRes, reviewsRes] = await Promise.all([
-        fetch('/api/disputes'),
-        fetch('/api/recovery'),
-        fetch('/api/reviews?star_rating=1&per_page=50'),
+        fetch(buildApiUrl('/api/disputes')),
+        fetch(buildApiUrl('/api/recovery')),
+        fetch(buildApiUrl('/api/reviews', { star_rating: '1', per_page: '50' })),
       ])
 
       const [disputeJson, recoveryJson, reviewsJson] = await Promise.all([
@@ -40,7 +41,7 @@ export default function RecoveryPage() {
       setOutreach(recoveryJson.data ?? [])
 
       // Also fetch 2-star reviews
-      const reviews2Res = await fetch('/api/reviews?star_rating=2&per_page=50')
+      const reviews2Res = await fetch(buildApiUrl('/api/reviews', { star_rating: '2', per_page: '50' }))
       const reviews2Json = await reviews2Res.json()
 
       const allNegative = [

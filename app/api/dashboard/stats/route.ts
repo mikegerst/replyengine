@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolveBusinessId } from '@/lib/utils/resolve-business'
 import type { DashboardStats } from '@/lib/types/database'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -10,14 +11,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user's business
-  const { data: businesses } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .limit(1)
+  const requestedId = request.nextUrl.searchParams.get('business_id')
+  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
 
-  if (!businesses || businesses.length === 0) {
+  if (!businessId) {
     const emptyStats: DashboardStats = {
       totalReviews: 0,
       pendingResponses: 0,
@@ -28,9 +25,6 @@ export async function GET() {
     return NextResponse.json({ data: emptyStats })
   }
 
-  const businessId = businesses[0].id
-
-  // Fetch all reviews for this business
   const { data: reviews, error } = await supabase
     .from('reviews')
     .select('star_rating, response_status')

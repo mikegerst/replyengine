@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { buildApiUrl, getSelectedBusinessId } from '@/lib/utils/selected-business'
 import type { DashboardStats, Review } from '@/lib/types/database'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { ReviewCard } from '@/components/dashboard/review-card'
@@ -22,19 +23,22 @@ export default function OverviewPage() {
       const { data: businesses } = await supabase
         .from('businesses')
         .select('id, name')
-        .limit(1)
+        .order('created_at', { ascending: true })
 
       if (!businesses || businesses.length === 0) {
         router.push('/dashboard/onboarding')
         return
       }
 
-      setBusinessName(businesses[0].name)
+      // Use selected business or first one
+      const selectedId = getSelectedBusinessId()
+      const biz = businesses.find((b) => b.id === selectedId) ?? businesses[0]
+      setBusinessName(biz.name)
 
       // Fetch stats and recent reviews in parallel
       const [statsRes, reviewsRes] = await Promise.all([
-        fetch('/api/dashboard/stats'),
-        fetch('/api/reviews?per_page=5'),
+        fetch(buildApiUrl('/api/dashboard/stats')),
+        fetch(buildApiUrl('/api/reviews', { per_page: '5' })),
       ])
 
       const [statsJson, reviewsJson] = await Promise.all([

@@ -1,14 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolveBusinessId } from '@/lib/utils/resolve-business'
 import { generateRecoveryOutreach } from '@/lib/ai/generate-recovery'
 import type { Business, Review } from '@/lib/types/database'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const CreateRecoverySchema = z.object({
   review_id: z.string().uuid(),
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -16,20 +17,17 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: businesses } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .limit(1)
+  const requestedId = request.nextUrl.searchParams.get('business_id')
+  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
 
-  if (!businesses || businesses.length === 0) {
+  if (!businessId) {
     return NextResponse.json({ data: [] })
   }
 
   const { data, error } = await supabase
     .from('recovery_outreach')
     .select('*, reviews(*)')
-    .eq('business_id', businesses[0].id)
+    .eq('business_id', businessId)
     .order('created_at', { ascending: false })
 
   if (error) {
