@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessId } from '@/lib/utils/resolve-business'
-import { generateRecoveryOutreach } from '@/lib/ai/generate-recovery'
+import { generateRecoverySequence } from '@/lib/ai/generate-recovery'
 import type { Business, Review } from '@/lib/types/database'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -96,26 +96,39 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await generateRecoveryOutreach(typedReview, typedBusiness)
+    const seq = await generateRecoverySequence(typedReview, typedBusiness)
+    const sequenceId = crypto.randomUUID()
+    const now = new Date()
 
-    const { data: outreach, error: insertError } = await supabase
+    const phases = [
+      { phase: 1, message_draft: seq.phase1.message, status: 'draft' as const, scheduled_for: null },
+      { phase: 2, message_draft: seq.phase2.message, status: 'scheduled' as const, scheduled_for: new Date(now.getTime() + 7 * 86400000).toISOString() },
+      { phase: 3, message_draft: seq.phase3.message, status: 'scheduled' as const, scheduled_for: null },
+      { phase: 4, message_draft: seq.phase4.message, status: 'scheduled' as const, scheduled_for: null },
+    ]
+
+    const rows = phases.map((p) => ({
+      review_id: typedReview.id,
+      business_id: typedBusiness.id,
+      outreach_type: 'email' as const,
+      message_draft: p.message_draft,
+      suggested_resolution: p.phase === 1 ? seq.suggestedResolution : null,
+      status: p.status,
+      phase: p.phase,
+      sequence_id: sequenceId,
+      scheduled_for: p.scheduled_for,
+    }))
+
+    const { data: inserted, error: insertError } = await supabase
       .from('recovery_outreach')
-      .insert({
-        review_id: typedReview.id,
-        business_id: typedBusiness.id,
-        outreach_type: 'email',
-        message_draft: result.message,
-        suggested_resolution: result.suggestedResolution,
-        status: 'draft',
-      })
+      .insert(rows)
       .select('*, reviews(*)')
-      .single()
 
     if (insertError) {
       return NextResponse.json({ error: 'Failed to save outreach' }, { status: 500 })
     }
 
-    return NextResponse.json({ data: outreach }, { status: 201 })
+    return NextResponse.json({ data: inserted }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to generate recovery message'
     return NextResponse.json({ error: message }, { status: 500 })

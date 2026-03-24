@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { generateReviewResponse } from '@/lib/ai/generate-response'
+import { generateAmplifyResponse } from '@/lib/ai/generate-amplify-response'
 import { analyzeForDispute } from '@/lib/ai/analyze-dispute'
 import { canGenerateResponse } from '@/lib/utils/plan-limits'
 import type { Business, Review, ResponsePattern } from '@/lib/types/database'
@@ -59,13 +60,11 @@ export async function POST(
 
   const typedPatterns = (patterns ?? []) as ResponsePattern[]
 
-  // Generate AI response
+  // Generate AI response — use amplify for 4-5 star reviews
   try {
-    const result = await generateReviewResponse(
-      typedReview,
-      typedBusiness,
-      typedPatterns
-    )
+    const result = typedReview.star_rating >= 4
+      ? await generateAmplifyResponse(typedReview, typedBusiness)
+      : await generateReviewResponse(typedReview, typedBusiness, typedPatterns)
 
     // Save the response to the review
     const { data: updated, error: updateError } = await supabase

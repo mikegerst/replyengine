@@ -6,47 +6,79 @@ export interface RecoveryResult {
   suggestedResolution: string
 }
 
+export interface RecoverySequence {
+  phase1: { message: string; sendAfterDays: 0 }
+  phase2: { message: string; sendAfterDays: 7 }
+  phase3: { message: string; sendAfterDays: null }
+  phase4: { message: string; sendAfterDays: null }
+  suggestedResolution: string
+}
+
+function getOwnerName(business: Business): string {
+  return business.name.split(/[''\u2019]s?\s/)[0] ?? 'The Owner'
+}
+
 export async function generateRecoveryOutreach(
   review: Review,
   business: Business
 ): Promise<RecoveryResult> {
+  const seq = await generateRecoverySequence(review, business)
+  return { message: seq.phase1.message, suggestedResolution: seq.suggestedResolution }
+}
+
+export async function generateRecoverySequence(
+  review: Review,
+  business: Business
+): Promise<RecoverySequence> {
   const client = new Anthropic()
+  const ownerName = getOwnerName(business)
 
-  const ownerFirstName = business.name.split(/['']s?\s/)[0] ?? 'The Owner'
-
-  const systemPrompt = `You are helping a business owner write a private recovery message to an unhappy customer who left a negative Google review.
+  const systemPrompt = `You are helping a business owner write a 4-phase private recovery message sequence for an unhappy customer.
 
 Business: "${business.name}" (${business.business_type ?? 'local business'})
+Owner first name: "${ownerName}"
+Tone: ${business.tone} but always empathetic for recovery
 
-Follow this framework:
-Phase 1 — Acknowledge: Reference the specific issue from their review. Express genuine empathy. Take responsibility where appropriate.
-Phase 2 — Resolve: Offer a specific resolution based on the complaint type. This could be an invitation to return, offer to redo the service, provide direct contact info, or another appropriate remedy.
+Generate ALL 4 phases as a JSON object:
+
+Phase 1 — ACKNOWLEDGE (send immediately):
+Reference the specific complaint. Express genuine empathy. Take responsibility. Offer a specific resolution. Sign with owner name. 3-5 sentences.
+
+Phase 2 — FOLLOW UP (7 days later if no response):
+Short, 2-3 sentences. Mention the previous message. Reiterate the offer. No pressure. Sign with owner name.
+
+Phase 3 — GENTLE CLOSE (after resolution/return visit):
+Thank them for giving another chance. Ask if they'd consider UPDATING their review IF they felt the difference. NEVER ask to delete or remove. 2-3 sentences. Sign with owner name.
+
+Phase 4 — THANK YOU (if review is updated):
+Brief gratitude for the second chance and the update. 2 sentences. Sign with owner name.
 
 CRITICAL RULES:
-- NEVER ask the customer to delete, edit, or change their review — this violates Google's policies
-- NEVER offer compensation in exchange for changing the review
-- Be genuine and specific, not generic
-- Keep it concise — 3-5 sentences max
-- Sign with the owner's first name: "${ownerFirstName}"
-- The tone should be ${business.tone} but always empathetic for recovery messages
+- NEVER ask to delete, remove, or change a review in phases 1-2
+- Phase 3 only asks to "update" IF they felt a difference — not as a condition
+- NEVER offer compensation in exchange for changing reviews
+- Be genuine and specific to their complaint, not generic
 
-Respond with a JSON object (no markdown, no code fences):
+Respond with JSON (no markdown, no code fences):
 {
-  "message": "the private recovery message",
-  "suggestedResolution": "a brief description of the resolution being offered, e.g. 'Complimentary appetizer on next visit' or 'Free redo of service'"
+  "phase1": "message text",
+  "phase2": "message text",
+  "phase3": "message text",
+  "phase4": "message text",
+  "suggestedResolution": "brief description of resolution offered"
 }`
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 512,
+    max_tokens: 1024,
     system: systemPrompt,
     messages: [
       {
         role: 'user',
-        content: `Write a private recovery message for this negative review:
+        content: `Generate recovery sequence for this review:
 
 Reviewer: ${review.reviewer_name ?? 'Customer'}
-Rating: ${review.star_rating}/5 stars
+Rating: ${review.star_rating}/5
 Review: "${review.review_text ?? '(No text)'}"`,
       },
     ],
@@ -56,18 +88,21 @@ Review: "${review.review_text ?? '(No text)'}"`,
 
   try {
     const cleaned = rawText.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim()
-    const parsed = JSON.parse(cleaned) as {
-      message?: string
-      suggestedResolution?: string
-    }
+    const parsed = JSON.parse(cleaned) as Record<string, string>
 
     return {
-      message: typeof parsed.message === 'string' ? parsed.message : rawText.trim(),
-      suggestedResolution: typeof parsed.suggestedResolution === 'string' ? parsed.suggestedResolution : '',
+      phase1: { message: parsed.phase1 ?? '', sendAfterDays: 0 },
+      phase2: { message: parsed.phase2 ?? '', sendAfterDays: 7 },
+      phase3: { message: parsed.phase3 ?? '', sendAfterDays: null },
+      phase4: { message: parsed.phase4 ?? '', sendAfterDays: null },
+      suggestedResolution: parsed.suggestedResolution ?? '',
     }
   } catch {
     return {
-      message: rawText.trim(),
+      phase1: { message: rawText.trim(), sendAfterDays: 0 },
+      phase2: { message: '', sendAfterDays: 7 },
+      phase3: { message: '', sendAfterDays: null },
+      phase4: { message: '', sendAfterDays: null },
       suggestedResolution: '',
     }
   }

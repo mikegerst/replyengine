@@ -22,6 +22,7 @@ export interface Business {
   stripe_subscription_id: string | null
   monthly_response_count: number
   monthly_response_reset_at: string | null
+  current_promotions: string | null
   created_at: string
   updated_at: string
 }
@@ -76,7 +77,11 @@ export interface RecoveryOutreach {
   business_id: string
   outreach_type: 'email' | 'sms'
   message_draft: string | null
-  status: 'draft' | 'sent' | 'responded' | 'resolved' | 'dismissed'
+  status: 'draft' | 'scheduled' | 'sent' | 'responded' | 'resolved' | 'dismissed' | 'skipped'
+  phase: number
+  sequence_id: string | null
+  scheduled_for: string | null
+  auto_send: boolean
   sent_at: string | null
   resolved_at: string | null
   notes: string | null
