@@ -7,6 +7,7 @@ import type {
   RecoveryOutreachWithReview,
 } from '@/lib/types/database'
 import { buildApiUrl } from '@/lib/utils/selected-business'
+import { calculateRatingImpact, formatRevenue } from '@/lib/utils/rating-impact'
 import { DisputeCard } from '@/components/dashboard/dispute-card'
 import { RecoveryCard } from '@/components/dashboard/recovery-card'
 import { StarRating } from '@/components/dashboard/star-rating'
@@ -20,25 +21,29 @@ export default function RecoveryPage() {
   const [disputes, setDisputes] = useState<ReviewDisputeWithReview[]>([])
   const [outreach, setOutreach] = useState<RecoveryOutreachWithReview[]>([])
   const [negativeReviews, setNegativeReviews] = useState<Review[]>([])
+  const [allReviews, setAllReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [disputeRes, recoveryRes, reviewsRes] = await Promise.all([
+      const [disputeRes, recoveryRes, reviewsRes, allReviewsRes] = await Promise.all([
         fetch(buildApiUrl('/api/disputes')),
         fetch(buildApiUrl('/api/recovery')),
         fetch(buildApiUrl('/api/reviews', { star_rating: '1', per_page: '50' })),
+        fetch(buildApiUrl('/api/reviews', { per_page: '100' })),
       ])
 
-      const [disputeJson, recoveryJson, reviewsJson] = await Promise.all([
+      const [disputeJson, recoveryJson, reviewsJson, allReviewsJson] = await Promise.all([
         disputeRes.json(),
         recoveryRes.json(),
         reviewsRes.json(),
+        allReviewsRes.json(),
       ])
 
       setDisputes(disputeJson.data ?? [])
       setOutreach(recoveryJson.data ?? [])
+      setAllReviews(allReviewsJson.data ?? [])
 
       // Also fetch 2-star reviews
       const reviews2Res = await fetch(buildApiUrl('/api/reviews', { star_rating: '2', per_page: '50' }))
@@ -64,7 +69,7 @@ export default function RecoveryPage() {
   // Stats
   const activeDisputes = disputes.filter((d) => d.status !== 'dismissed')
   const filedDisputes = disputes.filter((d) =>
-    ['submitted', 'under_review', 'removed', 'denied'].includes(d.status)
+    ['submitted', 'under_review', 'removed', 'denied', 'escalated'].includes(d.status)
   )
   const removedDisputes = disputes.filter((d) => d.status === 'removed')
 
@@ -132,6 +137,7 @@ export default function RecoveryPage() {
       ) : tab === 'shield' ? (
         <ShieldTab
           disputes={disputes}
+          allReviews={allReviews}
           activeCount={activeDisputes.length}
           filedCount={filedDisputes.length}
           removedCount={removedDisputes.length}
@@ -164,12 +170,14 @@ export default function RecoveryPage() {
 
 function ShieldTab({
   disputes,
+  allReviews,
   activeCount,
   filedCount,
   removedCount,
   onUpdate,
 }: {
   disputes: ReviewDisputeWithReview[]
+  allReviews: Review[]
   activeCount: number
   filedCount: number
   removedCount: number
@@ -177,22 +185,38 @@ function ShieldTab({
 }) {
   const active = disputes.filter((d) => d.status !== 'dismissed')
 
+  // Aggregate rating impact if all flagged reviews removed
+  const flaggedReviewIds = active.map((d) => d.review_id)
+  const reviewsForCalc = allReviews.map((r) => ({ star_rating: r.star_rating, id: r.id }))
+  const aggregateImpact = flaggedReviewIds.length > 0
+    ? calculateRatingImpact(reviewsForCalc, flaggedReviewIds)
+    : null
+
   return (
     <div>
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
           <p className="text-2xl font-semibold text-gray-900">{activeCount}</p>
-          <p className="text-xs text-gray-500">Flagged</p>
+          <p className="text-xs text-gray-500">Detected</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
           <p className="text-2xl font-semibold text-gray-900">{filedCount}</p>
-          <p className="text-xs text-gray-500">Disputes filed</p>
+          <p className="text-xs text-gray-500">Appealed</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
           <p className="text-2xl font-semibold text-green-600">{removedCount}</p>
           <p className="text-xs text-gray-500">Removed</p>
         </div>
+        {aggregateImpact && aggregateImpact.ratingChange > 0 && (
+          <div className="bg-green-50 rounded-lg border border-green-200 p-4 text-center">
+            <p className="text-2xl font-semibold text-green-700">+{aggregateImpact.ratingChange}</p>
+            <p className="text-xs text-green-600">Rating if all removed</p>
+            <p className="text-[10px] text-green-500 mt-0.5">
+              {formatRevenue(aggregateImpact.estimatedRevenueImpact.low)}–{formatRevenue(aggregateImpact.estimatedRevenueImpact.high)}/yr
+            </p>
+          </div>
+        )}
       </div>
 
       {active.length === 0 ? (
@@ -209,9 +233,19 @@ function ShieldTab({
         </div>
       ) : (
         <div className="space-y-4">
-          {active.map((dispute) => (
-            <DisputeCard key={dispute.id} dispute={dispute} onUpdate={onUpdate} />
-          ))}
+          {active.map((dispute) => {
+            const impact = reviewsForCalc.length > 0
+              ? calculateRatingImpact(reviewsForCalc, [dispute.review_id])
+              : null
+            return (
+              <DisputeCard
+                key={dispute.id}
+                dispute={dispute}
+                onUpdate={onUpdate}
+                ratingImpact={impact}
+              />
+            )
+          })}
         </div>
       )}
     </div>

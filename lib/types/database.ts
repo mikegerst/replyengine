@@ -95,8 +95,13 @@ export interface ReviewDispute {
   violations: string[]
   suggested_dispute_text: string | null
   confidence: 'high' | 'medium' | 'low'
-  status: 'detected' | 'flagged' | 'submitted' | 'under_review' | 'removed' | 'denied' | 'dismissed'
+  status: 'detected' | 'flagged' | 'appeal_ready' | 'submitted' | 'under_review' | 'removed' | 'denied' | 'escalated' | 'dismissed'
   google_case_id: string | null
+  flagged_at: string | null
+  appeal_text: string | null
+  appeal_submitted_at: string | null
+  escalation_type: 'forum' | 'support' | 'legal' | null
+  escalation_notes: string | null
   submitted_at: string | null
   resolved_at: string | null
   created_at: string

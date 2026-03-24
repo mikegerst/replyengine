@@ -3,8 +3,11 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const UpdateDisputeSchema = z.object({
-  status: z.enum(['detected', 'flagged', 'submitted', 'under_review', 'removed', 'denied', 'dismissed']),
+  status: z.enum(['detected', 'flagged', 'appeal_ready', 'submitted', 'under_review', 'removed', 'denied', 'escalated', 'dismissed']).optional(),
   google_case_id: z.string().optional(),
+  appeal_text: z.string().max(5000).optional(),
+  escalation_type: z.enum(['forum', 'support', 'legal']).optional(),
+  escalation_notes: z.string().max(5000).optional(),
 })
 
 export async function PATCH(
@@ -28,15 +31,35 @@ export async function PATCH(
     )
   }
 
-  const updateData: Record<string, unknown> = {
-    status: parsed.data.status,
+  const updateData: Record<string, unknown> = {}
+
+  if (parsed.data.status) {
+    updateData.status = parsed.data.status
   }
 
-  if (parsed.data.google_case_id) {
+  if (parsed.data.google_case_id !== undefined) {
     updateData.google_case_id = parsed.data.google_case_id
   }
 
+  if (parsed.data.appeal_text !== undefined) {
+    updateData.appeal_text = parsed.data.appeal_text
+  }
+
+  if (parsed.data.escalation_type !== undefined) {
+    updateData.escalation_type = parsed.data.escalation_type
+  }
+
+  if (parsed.data.escalation_notes !== undefined) {
+    updateData.escalation_notes = parsed.data.escalation_notes
+  }
+
+  // Auto-set timestamps based on status
+  if (parsed.data.status === 'flagged') {
+    updateData.flagged_at = new Date().toISOString()
+  }
+
   if (parsed.data.status === 'submitted') {
+    updateData.appeal_submitted_at = new Date().toISOString()
     updateData.submitted_at = new Date().toISOString()
   }
 
