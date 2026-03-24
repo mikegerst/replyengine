@@ -219,6 +219,29 @@ function ShieldTab({
         )}
       </div>
 
+      {/* Quick actions for detected disputes */}
+      {(() => {
+        const readyToFile = active.filter((d) => d.status === 'detected' && d.suggested_dispute_text)
+        if (readyToFile.length === 0) return null
+        return (
+          <div className="bg-amber-50 rounded-lg border border-amber-200 px-4 py-3 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="text-sm text-amber-800 font-medium">
+              {readyToFile.length} dispute{readyToFile.length !== 1 ? 's' : ''} ready to file
+            </p>
+            <button
+              onClick={() => {
+                const first = readyToFile[0]
+                navigator.clipboard.writeText(first.suggested_dispute_text ?? '')
+                window.open('https://business.google.com/reviews', '_blank')
+              }}
+              className="inline-flex items-center justify-center bg-amber-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-amber-800 transition-colors"
+            >
+              File First — copies text &amp; opens Google
+            </button>
+          </div>
+        )
+      })()}
+
       {active.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
