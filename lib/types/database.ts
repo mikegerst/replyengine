@@ -23,6 +23,8 @@ export interface Business {
   monthly_response_count: number
   monthly_response_reset_at: string | null
   current_promotions: string | null
+  employee_names: string[]
+  competitor_names: string[]
   created_at: string
   updated_at: string
 }
@@ -43,6 +45,10 @@ export interface Review {
   sentiment: 'positive' | 'neutral' | 'negative' | null
   key_topics: string[] | null
   google_response_id: string | null
+  previous_star_rating: number | null
+  previous_review_text: string | null
+  updated_at_google: string | null
+  update_count: number
   created_at: string
   updated_at: string
 }
@@ -109,8 +115,76 @@ export interface ReviewDispute {
   escalation_notes: string | null
   submitted_at: string | null
   resolved_at: string | null
+  reviewer_specificity: 'high' | 'medium' | 'low' | null
+  reviewer_verifiable_details: string[] | null
+  reviewer_suspicious_indicators: string[] | null
+  reviewer_profile_summary: string | null
+  evidence_package: EvidencePackage | null
+  forum_post_draft: string | null
   created_at: string
   updated_at: string
+}
+
+export interface EvidencePackage {
+  appealText: string
+  timeline: string
+  reviewerAnalysis: string
+  employeeMatchResults: string | null
+  piiDetectionResults: string | null
+  patternAnalysis: string | null
+  ratingImpact: string
+  allViolations: string[]
+  crossReferences: string | null
+  formattedSummary: string
+}
+
+export interface AttackDetection {
+  id: string
+  business_id: string
+  detected_at: string
+  confidence: 'high' | 'medium' | 'low'
+  attack_review_ids: string[]
+  pattern_description: string | null
+  evidence_package: AttackEvidencePackage | null
+  status: 'detected' | 'reported' | 'resolved' | 'dismissed'
+  created_at: string
+  updated_at: string
+}
+
+export interface AttackEvidencePackage {
+  businessName: string
+  businessUrl: string
+  normalReviewVelocity: string
+  attackTimeline: string
+  suspiciousReviewUrls: string[]
+  reviewerProfileUrls: string[]
+  commonPatterns: string
+}
+
+export interface ReviewerAnalysis {
+  specificityScore: 'high' | 'medium' | 'low'
+  verifiableDetails: string[]
+  suspiciousIndicators: string[]
+  profileSummary: string
+}
+
+export interface ReviewVelocity {
+  normalVelocity: number
+  safeTarget: number
+  currentMonthCount: number
+  remainingThisMonth: number
+  warning: string | null
+}
+
+export interface FairnessScoreResult {
+  googleRating: number
+  fairnessScore: number
+  unfairReviewCount: number
+  unfairReviews: Array<{ id: string; star_rating: number; reason: string }>
+  ratingGap: number
+  potentialRating: number
+  reviewsNeededToRecover: number
+  estimatedRevenueImpact: { low: number; high: number }
 }
 
 export interface RecoveryOutreachWithReview extends RecoveryOutreach {

@@ -116,7 +116,7 @@ export async function POST(
     // Auto-analyze 1-2 star reviews for potential disputes
     if (typedReview.star_rating <= 2) {
       try {
-        const dispute = await analyzeForDispute(typedReview)
+        const dispute = await analyzeForDispute(typedReview, typedBusiness)
         if (dispute.isDisputable) {
           await supabase.from('review_disputes').insert({
             review_id: typedReview.id,

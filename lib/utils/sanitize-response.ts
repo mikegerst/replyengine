@@ -45,6 +45,8 @@ export const BUSINESS_PUBLIC_COLUMNS = [
   'plan',
   'monthly_response_count',
   'current_promotions',
+  'employee_names',
+  'competitor_names',
   'created_at',
   'updated_at',
 ].join(', ')

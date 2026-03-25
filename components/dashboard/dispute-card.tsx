@@ -57,6 +57,9 @@ export function DisputeCard({ dispute, onUpdate, ratingImpact }: DisputeCardProp
   const [appealText, setAppealText] = useState(dispute.appeal_text ?? '')
   const [caseId, setCaseId] = useState(dispute.google_case_id ?? '')
   const [escalationNotes, setEscalationNotes] = useState('')
+  const [showEvidence, setShowEvidence] = useState(false)
+  const [showForumPost, setShowForumPost] = useState(false)
+  const [forumCopied, setForumCopied] = useState(false)
 
   const review = dispute.reviews
 
@@ -84,6 +87,45 @@ export function DisputeCard({ dispute, onUpdate, ratingImpact }: DisputeCardProp
       if (json.data) {
         onUpdate(json.data)
         setAppealText(json.data.appeal_text ?? '')
+      }
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleAnalyzeReviewer() {
+    setLoading('reviewer')
+    try {
+      const res = await fetch(`/api/disputes/${dispute.id}/reviewer-analysis`, { method: 'POST' })
+      const json = await res.json()
+      if (json.data) onUpdate(json.data)
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleGenerateEvidence() {
+    setLoading('evidence')
+    try {
+      const res = await fetch(`/api/disputes/${dispute.id}/evidence`, { method: 'POST' })
+      const json = await res.json()
+      if (json.data) {
+        onUpdate(json.data)
+        setShowEvidence(true)
+      }
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleGenerateForumPost() {
+    setLoading('forum')
+    try {
+      const res = await fetch(`/api/disputes/${dispute.id}/forum-post`, { method: 'POST' })
+      const json = await res.json()
+      if (json.data) {
+        onUpdate(json.data)
+        setShowForumPost(true)
       }
     } finally {
       setLoading(null)
@@ -130,6 +172,32 @@ export function DisputeCard({ dispute, onUpdate, ratingImpact }: DisputeCardProp
           </span>
         ))}
       </div>
+
+      {/* Reviewer Analysis */}
+      {dispute.reviewer_specificity ? (
+        <div className="bg-gray-50 rounded-md p-3 mb-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Reviewer Analysis</p>
+          <div className="space-y-1 text-xs text-gray-600">
+            <p>Specificity: <span className={`font-medium ${dispute.reviewer_specificity === 'low' ? 'text-red-600' : dispute.reviewer_specificity === 'medium' ? 'text-yellow-600' : 'text-green-600'}`}>{dispute.reviewer_specificity}</span>
+              {dispute.reviewer_specificity === 'low' && ' (no specific details about a visit)'}
+            </p>
+            {dispute.reviewer_verifiable_details?.length ? (
+              <p>Verifiable details: {dispute.reviewer_verifiable_details.join(', ')}</p>
+            ) : (
+              <p>Verifiable details: <span className="text-red-600">None found</span></p>
+            )}
+            {dispute.reviewer_suspicious_indicators?.length ? (
+              <p>Suspicious indicators: {dispute.reviewer_suspicious_indicators.join(', ')}</p>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <div className="mb-3">
+          <Button size="sm" variant="secondary" onClick={handleAnalyzeReviewer} disabled={loading !== null}>
+            {loading === 'reviewer' ? 'Analyzing...' : 'Analyze Reviewer'}
+          </Button>
+        </div>
+      )}
 
       {/* Rating impact */}
       {ratingImpact && ratingImpact.ratingChange > 0 && (
@@ -267,6 +335,42 @@ export function DisputeCard({ dispute, onUpdate, ratingImpact }: DisputeCardProp
               <p className="text-sm font-semibold text-amber-900">You get ONE appeal — review the text below before submitting</p>
             </div>
 
+            {/* Evidence Package */}
+            {dispute.evidence_package ? (
+              <div className="mb-4">
+                <div className="bg-green-50 rounded-md p-3 border border-green-200 mb-2">
+                  <p className="text-sm font-medium text-green-800">
+                    Your evidence package is ready. When you start the appeal, you&apos;ll have 60 minutes to submit. Everything is prepared &mdash; just copy and paste.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setShowEvidence(!showEvidence)}>
+                    {showEvidence ? 'Hide' : 'View Full'} Evidence Package
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(dispute.evidence_package?.formattedSummary ?? '')
+                    }}
+                  >
+                    Copy Evidence Summary
+                  </Button>
+                </div>
+                {showEvidence && (
+                  <pre className="mt-3 bg-white border border-gray-200 rounded-md p-3 text-xs text-gray-700 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                    {dispute.evidence_package.formattedSummary}
+                  </pre>
+                )}
+              </div>
+            ) : (
+              <div className="mb-4">
+                <Button size="sm" variant="secondary" onClick={handleGenerateEvidence} disabled={loading !== null}>
+                  {loading === 'evidence' ? 'Building...' : 'Build Evidence Package'}
+                </Button>
+              </div>
+            )}
+
             {/* Generate or show appeal */}
             {!appealText ? (
               <Button size="sm" onClick={handleGenerateAppeal} disabled={loading !== null} className="mb-3">
@@ -383,15 +487,59 @@ export function DisputeCard({ dispute, onUpdate, ratingImpact }: DisputeCardProp
 
       {dispute.status === 'denied' && (
         <div className="border-t border-gray-100 pt-4">
-          <p className="text-sm font-medium text-gray-900 mb-3">Appeal denied — but you still have options:</p>
+          <p className="text-sm font-medium text-gray-900 mb-1">Appeal denied &mdash; but there&apos;s still a path forward.</p>
+          <p className="text-xs text-gray-500 mb-4">
+            The GBP Community Forum has volunteer Product Experts who can escalate your case directly to Google engineers.
+          </p>
 
+          {/* Forum Post Generator */}
           <div className="bg-gray-50 rounded-md p-3 mb-3">
-            <h5 className="text-sm font-medium text-gray-900">Community Forum</h5>
+            <h5 className="text-sm font-medium text-gray-900">Community Forum Post</h5>
             <p className="text-xs text-gray-500 mt-1">Product Experts can escalate cases to Google.</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <a href="https://support.google.com/business/community" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline">
-                Open Forum →
-              </a>
+
+            {dispute.forum_post_draft ? (
+              <div className="mt-2">
+                <Button size="sm" variant="secondary" onClick={() => setShowForumPost(!showForumPost)}>
+                  {showForumPost ? 'Hide' : 'View'} Forum Post Draft
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="ml-2"
+                  onClick={() => {
+                    navigator.clipboard.writeText(dispute.forum_post_draft ?? '')
+                    setForumCopied(true)
+                    setTimeout(() => setForumCopied(false), 2000)
+                  }}
+                >
+                  {forumCopied ? 'Copied!' : 'Copy Post'}
+                </Button>
+                <a
+                  href="https://support.google.com/business/community"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 inline-flex items-center text-xs text-blue-600 underline"
+                >
+                  Open GBP Community Forum
+                </a>
+                {showForumPost && (
+                  <pre className="mt-3 bg-white border border-gray-200 rounded-md p-3 text-xs text-gray-700 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                    {dispute.forum_post_draft}
+                  </pre>
+                )}
+              </div>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" onClick={handleGenerateForumPost} disabled={loading !== null}>
+                  {loading === 'forum' ? 'Generating...' : 'Generate Forum Post'}
+                </Button>
+                <a href="https://support.google.com/business/community" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline self-center">
+                  Open Forum →
+                </a>
+              </div>
+            )}
+
+            <div className="mt-2">
               <Button size="sm" variant="secondary" onClick={() => handleUpdate({ status: 'escalated', escalation_type: 'forum', escalation_notes: escalationNotes || 'Posted to forum' })} disabled={loading !== null}>
                 I&apos;ve Posted
               </Button>

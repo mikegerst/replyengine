@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getSelectedBusinessId } from '@/lib/utils/selected-business'
+import { getSelectedBusinessId, buildApiUrl } from '@/lib/utils/selected-business'
 import { Button } from '@/components/ui/button'
+import type { ReviewVelocity } from '@/lib/types/database'
 
 const TIMING_TIPS: Record<string, string> = {
   Restaurant: 'Best time to ask: when presenting the check or in a follow-up text 2 hours after dining.',
@@ -21,6 +22,7 @@ export default function GrowPage() {
   const [placeIdInput, setPlaceIdInput] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
   const [requestCount, setRequestCount] = useState(0)
+  const [velocity, setVelocity] = useState<ReviewVelocity | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -38,6 +40,15 @@ export default function GrowPage() {
           setPlaceId(data.google_place_id)
           setPlaceIdInput(data.google_place_id)
         }
+      }
+
+      // Fetch review velocity
+      try {
+        const velRes = await fetch(buildApiUrl('/api/review-velocity'))
+        const velJson = await velRes.json()
+        if (velJson.data) setVelocity(velJson.data)
+      } catch {
+        // Non-critical
       }
     }
     load()
@@ -178,7 +189,49 @@ export default function GrowPage() {
         </div>
       </div>
 
-      {/* Section 4: Smart Timing */}
+      {/* Section 4: Review Velocity */}
+      {velocity && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Review Velocity</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <div>
+              <p className="text-2xl font-bold text-gray-900">~{velocity.normalVelocity}</p>
+              <p className="text-xs text-gray-500">Normal rate / month</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{velocity.safeTarget}</p>
+              <p className="text-xs text-gray-500">Safe target / month</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{velocity.currentMonthCount}</p>
+              <p className="text-xs text-gray-500">This month</p>
+            </div>
+            <div>
+              <p className={`text-2xl font-bold ${velocity.remainingThisMonth > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {velocity.remainingThisMonth}
+              </p>
+              <p className="text-xs text-gray-500">Remaining (safe)</p>
+            </div>
+          </div>
+
+          {velocity.warning && (
+            <div className="bg-amber-50 rounded-md p-3 border border-amber-200 mb-3">
+              <p className="text-sm text-amber-800">{velocity.warning}</p>
+            </div>
+          )}
+
+          <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
+            <p className="text-xs text-gray-600">
+              Requesting too many reviews too fast can trigger Google&apos;s anti-manipulation filters. We pace your requests to stay safe.
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Never ask customers to leave reviews while they&apos;re on your business WiFi &mdash; Google may flag these as suspicious.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Section 5: Smart Timing */}
       <div className="bg-white rounded-lg border border-gray-200 p-5">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Smart Timing</h2>
         <div className="bg-blue-50 rounded-md p-4 border border-blue-100">

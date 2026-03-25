@@ -4,14 +4,16 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buildApiUrl, getSelectedBusinessId } from '@/lib/utils/selected-business'
-import type { DashboardStats, Review } from '@/lib/types/database'
+import type { DashboardStats, Review, FairnessScoreResult } from '@/lib/types/database'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { ReviewCard } from '@/components/dashboard/review-card'
+import Link from 'next/link'
 
 export default function OverviewPage() {
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentReviews, setRecentReviews] = useState<Review[]>([])
+  const [fairness, setFairness] = useState<FairnessScoreResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [businessName, setBusinessName] = useState<string | null>(null)
 
@@ -35,19 +37,22 @@ export default function OverviewPage() {
       const biz = businesses.find((b) => b.id === selectedId) ?? businesses[0]
       setBusinessName(biz.name)
 
-      // Fetch stats and recent reviews in parallel
-      const [statsRes, reviewsRes] = await Promise.all([
+      // Fetch stats, recent reviews, and fairness score in parallel
+      const [statsRes, reviewsRes, fairnessRes] = await Promise.all([
         fetch(buildApiUrl('/api/dashboard/stats')),
         fetch(buildApiUrl('/api/reviews', { per_page: '5' })),
+        fetch(buildApiUrl('/api/fairness-score')),
       ])
 
-      const [statsJson, reviewsJson] = await Promise.all([
+      const [statsJson, reviewsJson, fairnessJson] = await Promise.all([
         statsRes.json(),
         reviewsRes.json(),
+        fairnessRes.json(),
       ])
 
       setStats(statsJson.data ?? null)
       setRecentReviews(reviewsJson.data ?? [])
+      setFairness(fairnessJson.data ?? null)
       setLoading(false)
     }
 
@@ -58,6 +63,7 @@ export default function OverviewPage() {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 bg-gray-100 rounded w-1/3" />
+        <div className="h-48 bg-gray-100 rounded-lg" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-24 bg-gray-100 rounded-lg" />
@@ -81,6 +87,11 @@ export default function OverviewPage() {
           <p className="mt-1 text-sm text-gray-500">{businessName}</p>
         )}
       </div>
+
+      {/* Fairness Score — centerpiece */}
+      {fairness && fairness.googleRating > 0 && (
+        <FairnessScoreCard fairness={fairness} />
+      )}
 
       {/* Stats grid */}
       {stats && (
@@ -128,6 +139,116 @@ export default function OverviewPage() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function StarDisplay({ rating, label }: { rating: number; label: string }) {
+  const fullStars = Math.floor(rating)
+  const hasHalf = rating - fullStars >= 0.3
+
+  return (
+    <div>
+      <p className="text-xs text-gray-500 mb-1">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <div className="flex gap-0.5">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <svg
+              key={s}
+              className={`w-4 h-4 ${
+                s <= fullStars
+                  ? 'text-yellow-400'
+                  : s === fullStars + 1 && hasHalf
+                    ? 'text-yellow-300'
+                    : 'text-gray-200'
+              }`}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+          ))}
+        </div>
+        <span className="text-xl font-bold text-gray-900">{rating}</span>
+      </div>
+    </div>
+  )
+}
+
+function FairnessScoreCard({ fairness }: { fairness: FairnessScoreResult }) {
+  const hasUnfairReviews = fairness.unfairReviewCount > 0
+  const revenueFormatted = fairness.estimatedRevenueImpact.low > 0
+    ? `+$${Math.round(fairness.estimatedRevenueImpact.low / 1000)}K–$${Math.round(fairness.estimatedRevenueImpact.high / 1000)}K/yr`
+    : null
+
+  return (
+    <div className="bg-white rounded-xl border-2 border-gray-900 p-6 mb-8">
+      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
+        Your Ratings
+      </h2>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-4">
+        <StarDisplay rating={fairness.googleRating} label="Google Rating" />
+        <StarDisplay rating={fairness.fairnessScore} label="Fairness Score" />
+      </div>
+
+      {hasUnfairReviews && (
+        <>
+          <div className="border-t border-gray-100 pt-4 mt-2">
+            <p className="text-sm font-medium text-gray-900 mb-2">
+              {fairness.unfairReviewCount} review{fairness.unfairReviewCount !== 1 ? 's are' : ' is'} dragging your score down:
+            </p>
+            <div className="space-y-1 mb-3">
+              {fairness.unfairReviews.slice(0, 5).map((r) => (
+                <p key={r.id} className="text-sm text-gray-600">
+                  <span className="text-yellow-500">{'★'.repeat(r.star_rating)}{'☆'.repeat(5 - r.star_rating)}</span>
+                  {' '}&mdash; {r.reason}
+                </p>
+              ))}
+            </div>
+
+            {fairness.ratingGap > 0 && (
+              <div className="bg-green-50 rounded-md p-3 mb-3">
+                <p className="text-sm text-green-800">
+                  <span className="font-medium">If removed:</span>{' '}
+                  {fairness.googleRating} → {fairness.potentialRating} (+{fairness.ratingGap} stars)
+                </p>
+                {revenueFormatted && (
+                  <p className="text-sm text-green-700 mt-0.5">
+                    Est. revenue impact: {revenueFormatted}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {fairness.reviewsNeededToRecover > 0 && fairness.reviewsNeededToRecover < 1000 && (
+              <div className="bg-gray-50 rounded-md p-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Recovery path without removal
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">{fairness.reviewsNeededToRecover}</span> more 5-star reviews = {fairness.fairnessScore} rating
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Link
+              href="/dashboard/grow"
+              className="text-sm bg-white text-gray-900 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              Grow Reviews
+            </Link>
+          </div>
+        </>
+      )}
+
+      {!hasUnfairReviews && (
+        <p className="text-sm text-gray-500 mt-2">
+          No unfair reviews detected. Your Google rating reflects your true score.
+        </p>
+      )}
     </div>
   )
 }
