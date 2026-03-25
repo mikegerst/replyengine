@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessId } from '@/lib/utils/resolve-business'
+import { rateLimitResponse } from '@/lib/utils/rate-limit'
 import type { DashboardStats } from '@/lib/types/database'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -10,6 +11,10 @@ export async function GET(request: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // Rate limit: 100 per minute per user
+  const rateLimited = await rateLimitResponse(`user:${user.id}`, 100, 60 * 1000)
+  if (rateLimited) return rateLimited
 
   const requestedId = request.nextUrl.searchParams.get('business_id')
   const businessId = await resolveBusinessId(supabase, user.id, requestedId)

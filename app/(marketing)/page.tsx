@@ -324,6 +324,8 @@ export default function HomePage() {
           <span>&copy; {new Date().getFullYear()} ReplyEngine. All rights reserved.</span>
           <div className="flex items-center gap-4">
             <Link href="/free" className="hover:text-gray-600 transition-colors">Free Tool</Link>
+            <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms</Link>
             <Link href="/login" className="hover:text-gray-600 transition-colors">Sign in</Link>
             <Link href="/signup" className="hover:text-gray-600 transition-colors">Get started</Link>
           </div>

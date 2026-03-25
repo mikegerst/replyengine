@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { generateAppealText } from '@/lib/ai/generate-appeal'
+import { rateLimitResponse } from '@/lib/utils/rate-limit'
+import { apiBudgetResponse, incrementApiUsage } from '@/lib/utils/api-budget'
 import type { Business, Review, ReviewDispute } from '@/lib/types/database'
 import { NextResponse } from 'next/server'
 
@@ -13,6 +15,14 @@ export async function POST(
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // Rate limit: 100 per minute per user
+  const rateLimited = await rateLimitResponse(`user:${user.id}`, 100, 60 * 1000)
+  if (rateLimited) return rateLimited
+
+  // API budget check
+  const budgetExceeded = await apiBudgetResponse()
+  if (budgetExceeded) return budgetExceeded
 
   // Fetch dispute with review
   const { data: dispute, error: disputeError } = await supabase
@@ -38,12 +48,22 @@ export async function POST(
     return NextResponse.json({ error: 'Business not found' }, { status: 404 })
   }
 
+  // Plan enforcement: disputes require starter or pro
+  if ((business as Business).plan === 'free') {
+    return NextResponse.json(
+      { error: 'This feature requires a Starter or Pro plan. Upgrade at /dashboard/billing' },
+      { status: 403 }
+    )
+  }
+
   try {
     const appealText = await generateAppealText(
       typedDispute.reviews,
       business as Business,
       typedDispute
     )
+
+    await incrementApiUsage()
 
     // Save appeal text to dispute
     const { data: updated, error: updateError } = await supabase

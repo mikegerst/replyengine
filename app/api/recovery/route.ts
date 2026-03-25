@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessId } from '@/lib/utils/resolve-business'
 import { generateRecoverySequence } from '@/lib/ai/generate-recovery'
+import { rateLimitResponse } from '@/lib/utils/rate-limit'
+import { apiBudgetResponse, incrementApiUsage } from '@/lib/utils/api-budget'
 import type { Business, Review } from '@/lib/types/database'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -17,11 +19,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Rate limit: 100 per minute per user
+  const rateLimited = await rateLimitResponse(`user:${user.id}`, 100, 60 * 1000)
+  if (rateLimited) return rateLimited
+
   const requestedId = request.nextUrl.searchParams.get('business_id')
   const businessId = await resolveBusinessId(supabase, user.id, requestedId)
 
   if (!businessId) {
     return NextResponse.json({ data: [] })
+  }
+
+  // Plan enforcement: recovery requires pro plan
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('plan')
+    .eq('id', businessId)
+    .single()
+
+  if (!business || (business as Business).plan !== 'pro') {
+    return NextResponse.json(
+      { error: 'This feature requires a Pro plan. Upgrade at /dashboard/billing' },
+      { status: 403 }
+    )
   }
 
   const { data, error } = await supabase
@@ -81,6 +101,18 @@ export async function POST(request: Request) {
 
   const typedBusiness = business as Business
 
+  // Plan enforcement: recovery requires pro plan
+  if (typedBusiness.plan !== 'pro') {
+    return NextResponse.json(
+      { error: 'This feature requires a Pro plan. Upgrade at /dashboard/billing' },
+      { status: 403 }
+    )
+  }
+
+  // API budget check
+  const budgetExceeded = await apiBudgetResponse()
+  if (budgetExceeded) return budgetExceeded
+
   // Check if outreach already exists
   const { data: existing } = await supabase
     .from('recovery_outreach')
@@ -95,8 +127,13 @@ export async function POST(request: Request) {
     )
   }
 
+  // Rate limit: 100 per minute per user
+  const rateLimited = await rateLimitResponse(`user:${user.id}`, 100, 60 * 1000)
+  if (rateLimited) return rateLimited
+
   try {
     const seq = await generateRecoverySequence(typedReview, typedBusiness)
+    await incrementApiUsage()
     const sequenceId = crypto.randomUUID()
     const now = new Date()
 

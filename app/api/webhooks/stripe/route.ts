@@ -33,6 +33,9 @@ export async function POST(request: Request) {
 
   const supabase = getAdminClient()
 
+  // Log every webhook event for monitoring
+  console.log(`[Stripe Webhook] Received event: ${event.type} (${event.id})`)
+
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object
@@ -41,6 +44,18 @@ export async function POST(request: Request) {
       const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.toString()
 
       if (!businessId || !subscriptionId) break
+
+      // Idempotency: check if subscription is already set
+      const { data: existing } = await supabase
+        .from('businesses')
+        .select('stripe_subscription_id')
+        .eq('id', businessId)
+        .single()
+
+      if (existing?.stripe_subscription_id === subscriptionId) {
+        console.log(`[Stripe Webhook] Skipping duplicate checkout.session.completed for business ${businessId}`)
+        break
+      }
 
       // Get the subscription to find the price ID
       const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
@@ -67,6 +82,18 @@ export async function POST(request: Request) {
 
       if (!customerId) break
 
+      // Idempotency: check if plan is already correct
+      const { data: existingBiz } = await supabase
+        .from('businesses')
+        .select('plan')
+        .eq('stripe_customer_id', customerId)
+        .single()
+
+      if (existingBiz?.plan === plan) {
+        console.log(`[Stripe Webhook] Skipping duplicate subscription.updated for customer ${customerId}`)
+        break
+      }
+
       await supabase
         .from('businesses')
         .update({ plan })
@@ -80,6 +107,18 @@ export async function POST(request: Request) {
       const customerId = typeof subscription.customer === 'string' ? subscription.customer : ''
 
       if (!customerId) break
+
+      // Idempotency: check if already downgraded
+      const { data: existingBiz2 } = await supabase
+        .from('businesses')
+        .select('plan')
+        .eq('stripe_customer_id', customerId)
+        .single()
+
+      if (existingBiz2?.plan === 'free') {
+        console.log(`[Stripe Webhook] Skipping duplicate subscription.deleted for customer ${customerId}`)
+        break
+      }
 
       await supabase
         .from('businesses')
@@ -95,13 +134,16 @@ export async function POST(request: Request) {
     case 'invoice.payment_failed': {
       const invoice = event.data.object
       const customerId = typeof invoice.customer === 'string' ? invoice.customer : ''
-
-      if (!customerId) break
-
-      // We don't have a dedicated column — store in the existing fields
-      // The billing page will check subscription status directly
+      if (customerId) {
+        console.log(`[Stripe Webhook] Payment failed for customer ${customerId}`)
+      }
       break
     }
+
+    default:
+      // Return 200 for unhandled events to prevent Stripe retries
+      console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`)
+      break
   }
 
   return NextResponse.json({ received: true })

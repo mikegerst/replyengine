@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { rateLimitResponse } from '@/lib/utils/rate-limit'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -18,6 +19,10 @@ export async function PATCH(
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // Rate limit: 100 per minute per user
+  const rateLimited = await rateLimitResponse(`user:${user.id}`, 100, 60 * 1000)
+  if (rateLimited) return rateLimited
 
   const body: unknown = await request.json()
   const parsed = UpdateRecoverySchema.safeParse(body)

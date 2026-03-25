@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { CreateBusinessSchema } from '@/lib/types/api'
+import { BUSINESS_PUBLIC_COLUMNS } from '@/lib/utils/sanitize-response'
+import { rateLimitResponse } from '@/lib/utils/rate-limit'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -10,9 +12,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Rate limit: 100 per minute per user
+  const rateLimited = await rateLimitResponse(`user:${user.id}`, 100, 60 * 1000)
+  if (rateLimited) return rateLimited
+
   const { data, error } = await supabase
     .from('businesses')
-    .select('*')
+    .select(BUSINESS_PUBLIC_COLUMNS)
     .eq('owner_id', user.id)
     .order('created_at', { ascending: false })
 

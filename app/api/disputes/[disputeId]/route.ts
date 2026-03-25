@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import { rateLimitResponse } from '@/lib/utils/rate-limit'
+import type { Business } from '@/lib/types/database'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const UpdateDisputeSchema = z.object({
   status: z.enum(['detected', 'flagged', 'appeal_ready', 'submitted', 'under_review', 'removed', 'denied', 'escalated', 'dismissed']).optional(),
-  google_case_id: z.string().optional(),
+  google_case_id: z.string().max(500).optional(),
   appeal_text: z.string().max(5000).optional(),
   escalation_type: z.enum(['forum', 'support', 'legal']).optional(),
   escalation_notes: z.string().max(5000).optional(),
@@ -19,6 +21,32 @@ export async function PATCH(
 
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Rate limit: 100 per minute per user
+  const rateLimited = await rateLimitResponse(`user:${user.id}`, 100, 60 * 1000)
+  if (rateLimited) return rateLimited
+
+  // Plan enforcement: disputes require starter or pro
+  const { data: dispute } = await supabase
+    .from('review_disputes')
+    .select('business_id')
+    .eq('id', params.disputeId)
+    .single()
+
+  if (dispute) {
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('plan')
+      .eq('id', dispute.business_id)
+      .single()
+
+    if (!business || (business as Business).plan === 'free') {
+      return NextResponse.json(
+        { error: 'This feature requires a Starter or Pro plan. Upgrade at /dashboard/billing' },
+        { status: 403 }
+      )
+    }
   }
 
   const body: unknown = await request.json()

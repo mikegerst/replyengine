@@ -3,6 +3,8 @@ import { generateReviewResponse } from '@/lib/ai/generate-response'
 import { generateAmplifyResponse } from '@/lib/ai/generate-amplify-response'
 import { analyzeForDispute } from '@/lib/ai/analyze-dispute'
 import { canGenerateResponse } from '@/lib/utils/plan-limits'
+import { rateLimitResponse } from '@/lib/utils/rate-limit'
+import { apiBudgetResponse, incrementApiUsage } from '@/lib/utils/api-budget'
 import type { Business, Review, ResponsePattern } from '@/lib/types/database'
 import { NextResponse } from 'next/server'
 
@@ -16,6 +18,14 @@ export async function POST(
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // Rate limit: 100 per minute per user
+  const rateLimited = await rateLimitResponse(`user:${user.id}`, 100, 60 * 1000)
+  if (rateLimited) return rateLimited
+
+  // API budget check
+  const budgetExceeded = await apiBudgetResponse()
+  if (budgetExceeded) return budgetExceeded
 
   // Fetch the review
   const { data: review, error: reviewError } = await supabase
@@ -65,6 +75,8 @@ export async function POST(
     const result = typedReview.star_rating >= 4
       ? await generateAmplifyResponse(typedReview, typedBusiness)
       : await generateReviewResponse(typedReview, typedBusiness, typedPatterns)
+
+    await incrementApiUsage()
 
     // Save the response to the review
     const { data: updated, error: updateError } = await supabase

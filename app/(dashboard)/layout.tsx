@@ -23,6 +23,7 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [emailConfirmed, setEmailConfirmed] = useState(true)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -31,6 +32,7 @@ export default function DashboardLayout({
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser()
       setUserEmail(user?.email ?? null)
+      setEmailConfirmed(!!user?.email_confirmed_at)
     }
     getUser()
   }, [supabase.auth])
@@ -125,6 +127,13 @@ export default function DashboardLayout({
           </button>
           <span className="ml-4 text-lg font-bold text-gray-900">ReplyEngine</span>
         </header>
+
+        {/* Email confirmation banner */}
+        {!emailConfirmed && userEmail && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-center text-sm text-yellow-800">
+            Please confirm your email to access all features. Check your inbox for a confirmation link.
+          </div>
+        )}
 
         {/* Page content */}
         <main className="p-6 lg:p-8">

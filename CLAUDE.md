@@ -73,6 +73,9 @@ SaaS product that connects to a business's Google Business Profile, pulls their 
 - Rate limit all public-facing endpoints
 - Sanitize all user input before database operations
 
+## Supabase Configuration
+- **Email confirmation must be enabled** in Supabase Auth settings (Authentication > Settings > Email Auth). This prevents users from signing up with fake emails and ensures account ownership.
+
 ## Architecture Decisions
 - Supabase Auth handles all session management — do not build custom auth
 - AI response generation happens server-side only — never expose API keys to client
