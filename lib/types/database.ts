@@ -210,3 +210,35 @@ export interface DashboardStats {
     skipped: number
   }
 }
+
+export interface MonthlyDataPoint {
+  month: string
+  value: number
+}
+
+export interface KeywordCount {
+  keyword: string
+  count: number
+}
+
+export interface AnalyticsData {
+  ratingTrend: MonthlyDataPoint[]
+  reviewVolume: MonthlyDataPoint[]
+  sentimentBreakdown: {
+    positive: number
+    neutral: number
+    negative: number
+    mixed: number
+  }
+  responsePerformance: MonthlyDataPoint[]
+  starDistribution: Record<number, number>
+  topKeywords: KeywordCount[]
+  recoveryStats: Record<string, number>
+  disputeStats: Record<string, number>
+  summary: {
+    totalReviews: number
+    avgRating: number
+    responseRate: number
+    avgResponseTimeHours: number
+  }
+}
