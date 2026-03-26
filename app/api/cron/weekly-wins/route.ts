@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateWeeklyWinsEmail, getWeeklyStats } from '@/lib/notifications/weekly-wins'
+import { sendRecoveryEmail } from '@/lib/notifications/email'
 import type { Business, Review, ReviewDispute, RecoveryOutreach } from '@/lib/types/database'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -50,13 +51,20 @@ export async function POST(request: NextRequest) {
 
     const email = generateWeeklyWinsEmail({ business, ...stats })
 
-    // TODO: Send via Resend once the resend package is installed and lib/notifications/email.ts is implemented
-    // Install resend (`npm i resend`) then uncomment:
-    //   import { Resend } from 'resend'
-    //   const resend = new Resend(process.env.RESEND_API_KEY)
-    //   await resend.emails.send({ from: '...', to: ownerEmail, subject: email.subject, html: email.body })
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[weekly-wins] Would send to ${business.name}: ${email.subject}`)
+    if (process.env.RESEND_API_KEY && business.notification_email) {
+      const ownerRes = await supabase.auth.admin.getUserById(business.owner_id)
+      const ownerEmail = ownerRes.data?.user?.email
+      if (ownerEmail) {
+        const result = await sendRecoveryEmail({
+          to: ownerEmail,
+          subject: email.subject,
+          htmlBody: email.body,
+          fromName: business.name,
+        })
+        if (!result.success) {
+          console.error(`Failed to send weekly wins to ${business.name}:`, result.error)
+        }
+      }
     }
 
     sent++

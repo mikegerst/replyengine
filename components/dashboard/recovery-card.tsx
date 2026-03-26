@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button'
 import { formatRelativeDate } from '@/lib/utils/format'
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-yellow-100 text-yellow-800',
+  draft: 'bg-gray-100 text-gray-600',
+  scheduled: 'bg-gray-100 text-gray-500',
   sent: 'bg-blue-100 text-blue-800',
-  responded: 'bg-purple-100 text-purple-700',
+  responded: 'bg-yellow-100 text-yellow-800',
   resolved: 'bg-green-100 text-green-800',
-  dismissed: 'bg-gray-100 text-gray-600',
+  dismissed: 'bg-gray-100 text-gray-400',
+  skipped: 'bg-red-100 text-red-600',
 }
 
 const TIMELINE_STEPS = ['draft', 'sent', 'responded', 'resolved'] as const
@@ -27,6 +29,7 @@ export function RecoveryCard({ outreach, onUpdate }: RecoveryCardProps) {
   const [editedMessage, setEditedMessage] = useState(outreach.message_draft ?? '')
   const [notes, setNotes] = useState(outreach.notes ?? '')
   const [copied, setCopied] = useState(false)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const review = outreach.reviews
 
@@ -70,6 +73,28 @@ export function RecoveryCard({ outreach, onUpdate }: RecoveryCardProps) {
     await navigator.clipboard.writeText(outreach.message_draft ?? '')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleSend() {
+    setLoading('send')
+    setToast(null)
+    try {
+      const res = await fetch(`/api/recovery/${outreach.id}/send`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) {
+        setToast({ type: 'error', message: json.error ?? 'Failed to send' })
+        return
+      }
+      if (json.data) {
+        onUpdate(json.data)
+        setToast({ type: 'success', message: `Message sent via ${outreach.outreach_type}` })
+        setTimeout(() => setToast(null), 4000)
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Failed to send message' })
+    } finally {
+      setLoading(null)
+    }
   }
 
   const currentStep = TIMELINE_STEPS.indexOf(outreach.status as typeof TIMELINE_STEPS[number])
@@ -168,10 +193,28 @@ export function RecoveryCard({ outreach, onUpdate }: RecoveryCardProps) {
         </div>
       )}
 
+      {/* Toast notification */}
+      {toast && (
+        <div className={`rounded-md px-3 py-2 mb-3 text-sm ${
+          toast.type === 'success'
+            ? 'bg-green-50 text-green-700 border border-green-200'
+            : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex flex-wrap gap-2">
         {outreach.status === 'draft' && !editing && (
           <>
+            <Button
+              size="sm"
+              onClick={handleSend}
+              disabled={loading !== null}
+            >
+              {loading === 'send' ? 'Sending...' : `Send via ${outreach.outreach_type === 'sms' ? 'SMS' : 'Email'}`}
+            </Button>
             <Button size="sm" variant="secondary" onClick={handleCopy}>
               {copied ? 'Copied!' : 'Copy Message'}
             </Button>
@@ -187,6 +230,7 @@ export function RecoveryCard({ outreach, onUpdate }: RecoveryCardProps) {
             </Button>
             <Button
               size="sm"
+              variant="ghost"
               onClick={() => handleStatusChange('sent')}
               disabled={loading !== null}
             >

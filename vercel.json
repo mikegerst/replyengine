@@ -1,5 +1,19 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/cron/dispute-reminders",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-wins",
+      "schedule": "0 14 * * 1"
+    },
+    {
+      "path": "/api/cron/recovery-followup",
+      "schedule": "0 10 * * *"
+    }
+  ]
 }
