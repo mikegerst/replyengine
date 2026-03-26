@@ -15,6 +15,7 @@ interface RateLimitResult {
 
 /**
  * Persistent rate limiting using Supabase.
+ * Uses an atomic Postgres function to prevent race conditions.
  * Table: rate_limits (key TEXT PRIMARY KEY, count INTEGER, window_start TIMESTAMPTZ)
  */
 export async function checkRateLimit(
@@ -23,44 +24,32 @@ export async function checkRateLimit(
   windowMs: number
 ): Promise<RateLimitResult> {
   const supabase = getAdminClient()
-  const now = new Date()
-  const windowStart = new Date(now.getTime() - windowMs)
 
-  // Try to get existing entry
-  const { data: existing } = await supabase
-    .from('rate_limits')
-    .select('count, window_start')
-    .eq('key', key)
-    .single()
+  const { data, error } = await supabase.rpc('check_rate_limit', {
+    p_key: key,
+    p_max_count: maxRequests,
+    p_window_ms: windowMs,
+  })
 
-  if (!existing || new Date(existing.window_start) < windowStart) {
-    // Window expired or no entry — reset
-    await supabase
-      .from('rate_limits')
-      .upsert({
-        key,
-        count: 1,
-        window_start: now.toISOString(),
-      })
-
-    return { allowed: true, remaining: maxRequests - 1, retryAfterSeconds: null }
+  if (error || !data || data.length === 0) {
+    // If the RPC fails (e.g., function not deployed yet), allow the request
+    // but log the error for monitoring
+    console.error('Rate limit check failed, allowing request:', error?.message)
+    return { allowed: true, remaining: maxRequests, retryAfterSeconds: null }
   }
 
-  if (existing.count >= maxRequests) {
-    const windowEnd = new Date(new Date(existing.window_start).getTime() + windowMs)
-    const retryAfterSeconds = Math.ceil((windowEnd.getTime() - now.getTime()) / 1000)
+  const row = data[0] as { allowed: boolean; current_count: number }
+  const allowed = row.allowed
+  const currentCount = row.current_count
+
+  if (!allowed) {
+    const retryAfterSeconds = Math.ceil(windowMs / 1000)
     return { allowed: false, remaining: 0, retryAfterSeconds }
   }
 
-  // Increment counter
-  await supabase
-    .from('rate_limits')
-    .update({ count: existing.count + 1 })
-    .eq('key', key)
-
   return {
     allowed: true,
-    remaining: maxRequests - existing.count - 1,
+    remaining: maxRequests - currentCount,
     retryAfterSeconds: null,
   }
 }

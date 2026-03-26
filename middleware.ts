@@ -1,8 +1,26 @@
 import { updateSession } from '@/lib/supabase/middleware'
 import type { NextRequest } from 'next/server'
 
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+}
+
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  const response = await updateSession(request)
+
+  // Apply security headers to non-API routes (HTML pages)
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+  if (!isApiRoute) {
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      response.headers.set(key, value)
+    }
+  }
+
+  return response
 }
 
 export const config = {

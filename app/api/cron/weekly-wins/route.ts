@@ -6,8 +6,13 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
+  const isVercelCron = request.headers.get('x-vercel-cron') !== null
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || (!isVercelCron && authHeader !== `Bearer ${cronSecret}`)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  if (isVercelCron && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -45,10 +50,14 @@ export async function POST(request: NextRequest) {
 
     const email = generateWeeklyWinsEmail({ business, ...stats })
 
-    // For now, log the email — connect Resend later
-    console.log(`\n=== Weekly Wins: ${business.name} ===`)
-    console.log(`Subject: ${email.subject}`)
-    console.log(email.body)
+    // TODO: Send via Resend once the resend package is installed and lib/notifications/email.ts is implemented
+    // Install resend (`npm i resend`) then uncomment:
+    //   import { Resend } from 'resend'
+    //   const resend = new Resend(process.env.RESEND_API_KEY)
+    //   await resend.emails.send({ from: '...', to: ownerEmail, subject: email.subject, html: email.body })
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[weekly-wins] Would send to ${business.name}: ${email.subject}`)
+    }
 
     sent++
   }
