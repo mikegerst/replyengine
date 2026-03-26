@@ -15,6 +15,7 @@ const VIOLATION_TYPES = [
   'CONFLICT_OF_INTEREST',
   'OFF_TOPIC',
   'RESTRICTED_CONTENT',
+  'WRONG_BUSINESS',
 ] as const
 
 // Off-topic keywords for pre-screening
@@ -147,8 +148,13 @@ Analyze the review and determine if it violates any of these Google review polic
 3. CONFLICT_OF_INTEREST: Appears to be from a competitor, ex-employee, or someone with a personal/business dispute unrelated to the customer experience.
 4. OFF_TOPIC: Discusses unrelated topics, politics, personal grievances not about the business experience.
 5. RESTRICTED_CONTENT: Contains personal information like phone numbers, addresses, or makes specific legal accusations.
+6. WRONG_BUSINESS: Review describes physical features, products, services, or experiences that don't match the business. Examples: mentions a view the business doesn't have, describes menu items they don't serve, references services they don't offer, describes a layout that doesn't match. Also includes WRONG_LOCATION (reviewer visited a different location of a chain or a neighboring business) and OUTDATED_EXPERIENCE (review describes policies, staff, menu items, or physical features that no longer exist).
 
 Be conservative — only flag reviews you are genuinely confident violate a policy. A bad review is NOT the same as a fake review. Legitimate negative experiences should not be flagged.
+
+BUSINESS CONTEXT:
+${business?.business_description ? `The business has described itself as: ${business.business_description}` : 'No business description provided.'}
+${business?.business_does_not_have ? `The business explicitly does NOT have: ${business.business_does_not_have}. If the review mentions features or experiences that contradict this description, flag as WRONG_BUSINESS.` : ''}
 
 ADDITIONAL SCAN RESULTS (factor these into your analysis):
 ${piiResult ? `- PII detected: ${piiResult.reasoning}` : '- No PII detected'}
@@ -176,7 +182,7 @@ Respond with a JSON object (no markdown, no code fences):
 {
   "isDisputable": boolean,
   "confidence": "high" | "medium" | "low",
-  "violations": ["SPAM_FAKE" | "OFFENSIVE" | "CONFLICT_OF_INTEREST" | "OFF_TOPIC" | "RESTRICTED_CONTENT"],
+  "violations": ["SPAM_FAKE" | "OFFENSIVE" | "CONFLICT_OF_INTEREST" | "OFF_TOPIC" | "RESTRICTED_CONTENT" | "WRONG_BUSINESS"],
   "reasoning": "1-2 sentence explanation",
   "suggestedDisputeText": "The text to submit to Google when filing the dispute. Reference the specific policy and explain why the review violates it. Leave empty string if not disputable."
 }`,

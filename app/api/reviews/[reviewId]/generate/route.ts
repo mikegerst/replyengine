@@ -113,9 +113,23 @@ export async function POST(
         .eq('id', typedBusiness.id)
     }
 
-    // Auto-analyze 1-2 star reviews for potential disputes
-    if (typedReview.star_rating <= 2) {
-      try {
+    // Analyze reviews that negatively impact the business's rating
+    // A review drags the score down if it's below the current average (ceiled),
+    // OR if it's 1-2 stars regardless of average
+    try {
+      const { data: allReviews } = await supabase
+        .from('reviews')
+        .select('star_rating')
+        .eq('business_id', typedBusiness.id)
+
+      const avgRating = allReviews && allReviews.length > 0
+        ? allReviews.reduce((sum: number, r: { star_rating: number }) => sum + r.star_rating, 0) / allReviews.length
+        : 5
+
+      const isNegativeImpact = typedReview.star_rating < Math.ceil(avgRating)
+      const isLowRating = typedReview.star_rating <= 2
+
+      if (isNegativeImpact || isLowRating) {
         const dispute = await analyzeForDispute(typedReview, typedBusiness)
         if (dispute.isDisputable) {
           await supabase.from('review_disputes').insert({
@@ -130,9 +144,9 @@ export async function POST(
             status: 'detected',
           })
         }
-      } catch {
-        // Dispute analysis is non-critical — don't fail the response generation
       }
+    } catch {
+      // Dispute analysis is non-critical — don't fail the response generation
     }
 
     return NextResponse.json({ data: updated })

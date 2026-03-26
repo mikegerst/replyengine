@@ -45,6 +45,7 @@ export function calculateFairnessScore(
         CONFLICT_OF_INTEREST: 'Suspected competitor',
         OFF_TOPIC: 'Off-topic',
         RESTRICTED_CONTENT: 'Contains restricted content',
+        WRONG_BUSINESS: 'Wrong business',
       }
       const primaryViolation = (dispute.violations ?? [])[0]
       const reason = primaryViolation ? (violationLabels[primaryViolation] ?? primaryViolation) : dispute.reason

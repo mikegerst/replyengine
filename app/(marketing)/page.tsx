@@ -211,6 +211,8 @@ export default function HomePage() {
               <h3 className="text-lg font-semibold text-gray-900">Shield</h3>
               <p className="mt-2 text-sm text-gray-500 leading-relaxed">
                 Remove fake and unfair reviews. Our AI detects policy violations and walks you through the removal process.
+                Even &ldquo;positive&rdquo; reviews can hurt your score. A 4-star review on a 4.5-star business drags you down.
+                ReplyEngine detects every review that&apos;s costing you &mdash; including reviews clearly meant for a different business.
               </p>
             </div>
 

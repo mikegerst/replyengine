@@ -25,6 +25,8 @@ export interface Business {
   current_promotions: string | null
   employee_names: string[]
   competitor_names: string[]
+  business_description: string | null
+  business_does_not_have: string | null
   created_at: string
   updated_at: string
 }

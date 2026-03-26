@@ -43,6 +43,8 @@ export default function OnboardingPage() {
   const [tone, setTone] = useState('professional')
   const [responseLength, setResponseLength] = useState('medium')
   const [customInstructions, setCustomInstructions] = useState('')
+  const [businessDescription, setBusinessDescription] = useState('')
+  const [businessDoesNotHave, setBusinessDoesNotHave] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -59,6 +61,8 @@ export default function OnboardingPage() {
           tone,
           response_length: responseLength,
           custom_instructions: customInstructions || undefined,
+          business_description: businessDescription || undefined,
+          business_does_not_have: businessDoesNotHave || undefined,
         }),
       })
 
@@ -199,6 +203,47 @@ export default function OnboardingPage() {
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-y"
             placeholder="e.g. Always mention our 24/7 emergency service. Offer a 10% discount to unhappy customers."
           />
+        </div>
+
+        {/* Business details — optional, for wrong-business detection */}
+        <div className="border-t border-gray-100 pt-6">
+          <p className="text-sm font-medium text-gray-700 mb-1">
+            Help us detect reviews that might be for the wrong business
+            <span className="text-gray-400 font-normal"> (optional)</span>
+          </p>
+          <p className="text-xs text-gray-400 mb-4">
+            This helps our AI spot reviews that describe a different business.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="bizDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                Describe your business
+              </label>
+              <textarea
+                id="bizDescription"
+                value={businessDescription}
+                onChange={(e) => setBusinessDescription(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-y"
+                placeholder="Indoor restaurant, wood-fired pizza, full bar, family-friendly"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="doesNotHave" className="block text-sm font-medium text-gray-700 mb-1">
+                What do you NOT have that people sometimes confuse?
+              </label>
+              <textarea
+                id="doesNotHave"
+                value={businessDoesNotHave}
+                onChange={(e) => setBusinessDoesNotHave(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-y"
+                placeholder="No creek view, no outdoor patio, no live music, no delivery"
+              />
+            </div>
+          </div>
         </div>
 
         <Button type="submit" disabled={loading} className="w-full">

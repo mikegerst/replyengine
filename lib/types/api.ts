@@ -6,6 +6,8 @@ export const CreateBusinessSchema = z.object({
   tone: z.enum(['professional', 'friendly', 'casual', 'formal']).default('professional'),
   response_length: z.enum(['short', 'medium', 'long']).default('medium'),
   custom_instructions: z.string().max(2000).optional(),
+  business_description: z.string().max(2000).optional(),
+  business_does_not_have: z.string().max(2000).optional(),
 })
 
 export type CreateBusinessInput = z.infer<typeof CreateBusinessSchema>
@@ -21,6 +23,8 @@ export const UpdateBusinessSchema = z.object({
   notification_email: z.boolean().optional(),
   notification_sms: z.boolean().optional(),
   phone: z.string().max(20).nullable().optional(),
+  business_description: z.string().max(2000).nullable().optional(),
+  business_does_not_have: z.string().max(2000).nullable().optional(),
 })
 
 export type UpdateBusinessInput = z.infer<typeof UpdateBusinessSchema>

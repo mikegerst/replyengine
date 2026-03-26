@@ -70,12 +70,14 @@ export async function PATCH(
   if (fields.employee_names !== undefined) updateData.employee_names = fields.employee_names
   if (fields.competitor_names !== undefined) updateData.competitor_names = fields.competitor_names
   if (fields.current_promotions !== undefined) updateData.current_promotions = fields.current_promotions
+  if (fields.business_description !== undefined) updateData.business_description = fields.business_description
+  if (fields.business_does_not_have !== undefined) updateData.business_does_not_have = fields.business_does_not_have
 
   const { data, error } = await supabase
     .from('businesses')
     .update(updateData)
     .eq('id', params.businessId)
-    .select(BUSINESS_PUBLIC_COLUMNS + ', employee_names, competitor_names')
+    .select(BUSINESS_PUBLIC_COLUMNS + ', employee_names, competitor_names, business_description, business_does_not_have')
     .single()
 
   if (error) {

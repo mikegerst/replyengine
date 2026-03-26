@@ -13,6 +13,7 @@ const VIOLATION_COLORS: Record<string, string> = {
   CONFLICT_OF_INTEREST: 'bg-purple-100 text-purple-700',
   OFF_TOPIC: 'bg-blue-100 text-blue-700',
   RESTRICTED_CONTENT: 'bg-yellow-100 text-yellow-800',
+  WRONG_BUSINESS: 'bg-teal-100 text-teal-700',
 }
 
 const VIOLATION_LABELS: Record<string, string> = {
@@ -21,6 +22,7 @@ const VIOLATION_LABELS: Record<string, string> = {
   CONFLICT_OF_INTEREST: 'Conflict of Interest',
   OFF_TOPIC: 'Off Topic',
   RESTRICTED_CONTENT: 'Restricted Content',
+  WRONG_BUSINESS: 'Wrong Business',
 }
 
 const GOOGLE_FLAG_CATEGORIES: Record<string, string> = {
@@ -29,6 +31,7 @@ const GOOGLE_FLAG_CATEGORIES: Record<string, string> = {
   CONFLICT_OF_INTEREST: 'Conflict of interest',
   OFF_TOPIC: 'Off topic',
   RESTRICTED_CONTENT: 'Personal information',
+  WRONG_BUSINESS: 'Off topic',
 }
 
 const CONFIDENCE_STYLES = {
@@ -60,6 +63,7 @@ export function DisputeCard({ dispute, onUpdate, ratingImpact }: DisputeCardProp
   const [showEvidence, setShowEvidence] = useState(false)
   const [showForumPost, setShowForumPost] = useState(false)
   const [forumCopied, setForumCopied] = useState(false)
+  const [wrongBizResponseCopied, setWrongBizResponseCopied] = useState(false)
 
   const review = dispute.reviews
 
@@ -143,6 +147,7 @@ export function DisputeCard({ dispute, onUpdate, ratingImpact }: DisputeCardProp
 
   const primaryViolation = (dispute.violations ?? [])[0] ?? ''
   const googleCategory = GOOGLE_FLAG_CATEGORIES[primaryViolation] ?? 'Spam'
+  const isWrongBusiness = (dispute.violations ?? []).includes('WRONG_BUSINESS')
 
   if (dispute.status === 'dismissed') {
     return (
@@ -239,8 +244,67 @@ export function DisputeCard({ dispute, onUpdate, ratingImpact }: DisputeCardProp
         ))}
       </div>
 
-      {/* ===== STEP 1: DETECTED — Ready to File summary ===== */}
-      {dispute.status === 'detected' && (
+      {/* ===== STEP 1: DETECTED ===== */}
+      {dispute.status === 'detected' && isWrongBusiness && (
+        <div className="border-t border-gray-100 pt-4">
+          <div className="bg-teal-50 rounded-lg p-4 mb-3 border border-teal-200">
+            <p className="text-sm font-semibold text-teal-900 mb-1">This review may be for a different business</p>
+            <p className="text-sm text-teal-700 mb-4">
+              {dispute.ai_analysis}
+            </p>
+
+            {/* Path A — Respond publicly first */}
+            <div className="bg-white rounded-md p-3 mb-3 border border-teal-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Option A &mdash; Respond Publicly First</p>
+              <p className="text-xs text-gray-500 mb-3">
+                Give the reviewer a chance to move or remove their review. This is the easiest outcome.
+              </p>
+              <div className="bg-gray-50 rounded-md p-3 mb-3">
+                <p className="text-sm text-gray-700 italic leading-relaxed">
+                  {dispute.suggested_dispute_text ?? `Thanks for the kind words! We want to make sure you're reviewing the right spot — we don't have the features you described. You might be thinking of a nearby business. If this was about us, we're glad you enjoyed your visit!`}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    dispute.suggested_dispute_text ?? `Thanks for the kind words! We want to make sure you're reviewing the right spot — we don't have the features you described. You might be thinking of a nearby business. If this was about us, we're glad you enjoyed your visit!`
+                  )
+                  setWrongBizResponseCopied(true)
+                  setTimeout(() => setWrongBizResponseCopied(false), 2000)
+                }}
+              >
+                {wrongBizResponseCopied ? 'Copied!' : 'Copy Response'}
+              </Button>
+            </div>
+
+            {/* Path B — File dispute */}
+            <div className="bg-white rounded-md p-3 border border-teal-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Option B &mdash; File Dispute</p>
+              <p className="text-xs text-gray-500 mb-3">
+                If the reviewer doesn&apos;t respond or move their review within 7 days, proceed with a dispute.
+              </p>
+              <DisputeFileButton
+                textToCopy={dispute.suggested_dispute_text ?? ''}
+                label="File Dispute — text will be copied"
+                confirmPrompt={`Did you submit the dispute for ${review?.reviewer_name ?? 'this reviewer'}'s review?`}
+                onConfirm={() => handleUpdate({ status: 'flagged' })}
+                onTrouble={() => setShowGuide(true)}
+              />
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <Button size="sm" variant="ghost" onClick={() => handleUpdate({ status: 'dismissed' })} disabled={loading !== null}>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== STEP 1: DETECTED — Standard (non-WRONG_BUSINESS) ===== */}
+      {dispute.status === 'detected' && !isWrongBusiness && (
         <div className="border-t border-gray-100 pt-4">
           <div className="bg-gray-50 rounded-lg p-4 mb-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ready to File</p>
