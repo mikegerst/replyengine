@@ -17,9 +17,24 @@ export async function GET(request: NextRequest) {
   if (rateLimited) return rateLimited
 
   const requestedId = request.nextUrl.searchParams.get('business_id')
-  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
+  const isAllLocations = requestedId === 'all'
 
-  if (!businessId) {
+  let businessIds: string[] = []
+
+  if (isAllLocations) {
+    const { data: businesses } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+    businessIds = (businesses ?? []).map((b) => b.id)
+  } else {
+    const businessId = await resolveBusinessId(supabase, user.id, requestedId)
+    if (businessId) {
+      businessIds = [businessId]
+    }
+  }
+
+  if (businessIds.length === 0) {
     const emptyStats: DashboardStats = {
       totalReviews: 0,
       pendingResponses: 0,
@@ -33,7 +48,7 @@ export async function GET(request: NextRequest) {
   const { data: reviews, error } = await supabase
     .from('reviews')
     .select('star_rating, response_status')
-    .eq('business_id', businessId)
+    .in('business_id', businessIds)
 
   if (error) {
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })

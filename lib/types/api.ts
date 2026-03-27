@@ -25,6 +25,7 @@ export const UpdateBusinessSchema = z.object({
   phone: z.string().max(20).nullable().optional(),
   business_description: z.string().max(2000).nullable().optional(),
   business_does_not_have: z.string().max(2000).nullable().optional(),
+  location_label: z.string().max(100).nullable().optional(),
 })
 
 export type UpdateBusinessInput = z.infer<typeof UpdateBusinessSchema>

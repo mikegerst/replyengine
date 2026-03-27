@@ -27,6 +27,8 @@ export interface Business {
   competitor_names: string[]
   business_description: string | null
   business_does_not_have: string | null
+  parent_business_id: string | null
+  location_label: string | null
   created_at: string
   updated_at: string
 }

@@ -72,6 +72,7 @@ export async function PATCH(
   if (fields.current_promotions !== undefined) updateData.current_promotions = fields.current_promotions
   if (fields.business_description !== undefined) updateData.business_description = fields.business_description
   if (fields.business_does_not_have !== undefined) updateData.business_does_not_have = fields.business_does_not_have
+  if (fields.location_label !== undefined) updateData.location_label = fields.location_label
 
   const { data, error } = await supabase
     .from('businesses')

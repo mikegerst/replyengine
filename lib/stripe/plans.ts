@@ -3,6 +3,7 @@ export const PLANS = {
     name: 'Free',
     price: 0,
     responsesPerMonth: 5,
+    maxLocations: 1,
     features: [
       '5 AI responses per month',
       'Copy-paste responses',
@@ -15,12 +16,14 @@ export const PLANS = {
     name: 'Starter',
     price: 19,
     responsesPerMonth: 30,
+    maxLocations: 3,
     features: [
       '30 AI responses per month',
       'One-tap posting to Google',
       'Dispute detection alerts',
       'Custom response tone',
       'Email notifications',
+      'Up to 3 locations',
     ],
     shield: 'alerts', // alerts only, no filing
     recover: false,
@@ -29,12 +32,14 @@ export const PLANS = {
     name: 'Pro',
     price: 39,
     responsesPerMonth: Infinity,
+    maxLocations: Infinity,
     features: [
       'Unlimited AI responses',
       'Auto-post responses',
       'Full dispute filing assistance',
       'Recovery outreach (email + SMS)',
       'Analytics dashboard',
+      'Unlimited locations',
       'Priority support',
     ],
     shield: true,

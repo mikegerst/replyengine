@@ -16,6 +16,8 @@ export default function OverviewPage() {
   const [fairness, setFairness] = useState<FairnessScoreResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [businessName, setBusinessName] = useState<string | null>(null)
+  const [locationBreakdown, setLocationBreakdown] = useState<Array<{ id: string; name: string; avgRating: number; pending: number }>>([])
+  const [isAllLocations, setIsAllLocations] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -34,8 +36,30 @@ export default function OverviewPage() {
 
       // Use selected business or first one
       const selectedId = getSelectedBusinessId()
-      const biz = businesses.find((b) => b.id === selectedId) ?? businesses[0]
-      setBusinessName(biz.name)
+      const allMode = selectedId === 'all' && businesses.length > 1
+      setIsAllLocations(allMode)
+
+      if (allMode) {
+        setBusinessName('All Locations')
+
+        // Build location breakdown
+        const breakdownPromises = businesses.map(async (b) => {
+          const { data: revs } = await supabase
+            .from('reviews')
+            .select('star_rating, response_status')
+            .eq('business_id', b.id)
+          const reviews = revs ?? []
+          const avg = reviews.length > 0
+            ? Math.round((reviews.reduce((s, r) => s + r.star_rating, 0) / reviews.length) * 10) / 10
+            : 0
+          const pending = reviews.filter((r) => r.response_status === 'pending' || r.response_status === 'draft').length
+          return { id: b.id, name: b.name, avgRating: avg, pending }
+        })
+        setLocationBreakdown(await Promise.all(breakdownPromises))
+      } else {
+        const biz = businesses.find((b) => b.id === selectedId) ?? businesses[0]
+        setBusinessName(biz.name)
+      }
 
       // Fetch stats, recent reviews, and fairness score in parallel
       const [statsRes, reviewsRes, fairnessRes] = await Promise.all([
@@ -114,6 +138,41 @@ export default function OverviewPage() {
             value={stats.responseRate > 0 ? `${stats.responseRate}%` : '—'}
             sublabel="Reviews responded to"
           />
+        </div>
+      )}
+
+      {/* Location breakdown (all locations mode) */}
+      {isAllLocations && locationBreakdown.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5 mb-8">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">Location Breakdown</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                  <th className="pb-2 font-medium">Location</th>
+                  <th className="pb-2 font-medium text-right">Avg Rating</th>
+                  <th className="pb-2 font-medium text-right">Pending</th>
+                </tr>
+              </thead>
+              <tbody>
+                {locationBreakdown.map((loc) => (
+                  <tr key={loc.id} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 text-gray-900">{loc.name}</td>
+                    <td className="py-2 text-right text-gray-600">
+                      {loc.avgRating > 0 ? loc.avgRating : '\u2014'}
+                    </td>
+                    <td className="py-2 text-right">
+                      {loc.pending > 0 ? (
+                        <span className="text-amber-600 font-medium">{loc.pending}</span>
+                      ) : (
+                        <span className="text-gray-400">0</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

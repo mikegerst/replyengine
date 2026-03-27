@@ -17,9 +17,24 @@ export async function GET(request: NextRequest) {
   if (rateLimited) return rateLimited
 
   const requestedId = request.nextUrl.searchParams.get('business_id')
-  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
+  const isAllLocations = requestedId === 'all'
 
-  if (!businessId) {
+  let businessIds: string[] = []
+
+  if (isAllLocations) {
+    const { data: businesses } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+    businessIds = (businesses ?? []).map((b) => b.id)
+  } else {
+    const businessId = await resolveBusinessId(supabase, user.id, requestedId)
+    if (businessId) {
+      businessIds = [businessId]
+    }
+  }
+
+  if (businessIds.length === 0) {
     return NextResponse.json({ data: [], total: 0 })
   }
 
@@ -36,12 +51,20 @@ export async function GET(request: NextRequest) {
   const { status, star_rating, page, per_page } = parsed.data
   const offset = (page - 1) * per_page
 
-  let query = supabase
-    .from('reviews')
-    .select('*', { count: 'exact' })
-    .eq('business_id', businessId)
-    .order('review_date', { ascending: false })
-    .range(offset, offset + per_page - 1)
+  // For "all locations", also fetch business names
+  let query = isAllLocations
+    ? supabase
+        .from('reviews')
+        .select('*, businesses!inner(name)', { count: 'exact' })
+        .in('business_id', businessIds)
+        .order('review_date', { ascending: false })
+        .range(offset, offset + per_page - 1)
+    : supabase
+        .from('reviews')
+        .select('*', { count: 'exact' })
+        .eq('business_id', businessIds[0])
+        .order('review_date', { ascending: false })
+        .range(offset, offset + per_page - 1)
 
   if (status) {
     query = query.eq('response_status', status)
@@ -57,5 +80,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 })
   }
 
-  return NextResponse.json({ data, total: count ?? 0, page, per_page })
+  // Flatten business name into the response for "all" mode
+  const reviews = isAllLocations
+    ? (data ?? []).map((r: Record<string, unknown>) => {
+        const businesses = r.businesses as { name: string } | null
+        return { ...r, business_name: businesses?.name ?? null, businesses: undefined }
+      })
+    : data
+
+  return NextResponse.json({ data: reviews, total: count ?? 0, page, per_page })
 }
