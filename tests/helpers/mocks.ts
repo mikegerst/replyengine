@@ -1,0 +1,127 @@
+import type {
+  Business,
+  Review,
+  ReviewDispute,
+  RecoveryOutreach,
+} from '@/lib/types/database'
+
+export function mockReview(overrides?: Partial<Review>): Review {
+  return {
+    id: 'rev-001',
+    business_id: 'biz-001',
+    google_review_id: 'google-rev-001',
+    reviewer_name: 'Test User',
+    reviewer_photo_url: null,
+    star_rating: 3,
+    review_text: 'The service was okay but could be improved.',
+    review_date: new Date().toISOString(),
+    ai_response: null,
+    edited_response: null,
+    response_status: 'pending',
+    posted_at: null,
+    sentiment: null,
+    key_topics: null,
+    google_response_id: null,
+    previous_star_rating: null,
+    previous_review_text: null,
+    updated_at_google: null,
+    update_count: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  }
+}
+
+export function mockBusiness(overrides?: Partial<Business>): Business {
+  return {
+    id: 'biz-001',
+    owner_id: 'user-001',
+    name: 'Test Business',
+    google_place_id: null,
+    google_account_id: null,
+    google_location_id: null,
+    google_access_token: null,
+    google_refresh_token: null,
+    google_token_expires_at: null,
+    business_type: 'restaurant',
+    tone: 'professional',
+    response_length: 'medium',
+    custom_instructions: null,
+    auto_respond: false,
+    auto_respond_min_stars: null,
+    notification_email: true,
+    notification_sms: false,
+    phone: null,
+    plan: 'free',
+    stripe_customer_id: null,
+    stripe_subscription_id: null,
+    monthly_response_count: 0,
+    monthly_response_reset_at: null,
+    current_promotions: null,
+    employee_names: [],
+    competitor_names: [],
+    business_description: null,
+    business_does_not_have: null,
+    parent_business_id: null,
+    location_label: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  }
+}
+
+export function mockDispute(overrides?: Partial<ReviewDispute>): ReviewDispute {
+  return {
+    id: 'dispute-001',
+    review_id: 'rev-001',
+    business_id: 'biz-001',
+    reason: 'Suspected fake review',
+    ai_confidence_score: 0.85,
+    ai_analysis: 'Review appears to be spam with no specific details.',
+    violations: ['SPAM_FAKE'],
+    suggested_dispute_text: 'This review violates Google policy.',
+    confidence: 'high',
+    status: 'flagged',
+    google_case_id: null,
+    flagged_at: new Date().toISOString(),
+    appeal_text: null,
+    appeal_submitted_at: null,
+    escalation_type: null,
+    escalation_notes: null,
+    submitted_at: null,
+    resolved_at: null,
+    reviewer_specificity: null,
+    reviewer_verifiable_details: null,
+    reviewer_suspicious_indicators: null,
+    reviewer_profile_summary: null,
+    evidence_package: null,
+    forum_post_draft: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  }
+}
+
+export function mockRecoveryOutreach(
+  overrides?: Partial<RecoveryOutreach>
+): RecoveryOutreach {
+  return {
+    id: 'outreach-001',
+    review_id: 'rev-001',
+    business_id: 'biz-001',
+    outreach_type: 'email',
+    message_draft: 'We are sorry about your experience...',
+    status: 'draft',
+    phase: 1,
+    sequence_id: 'seq-001',
+    scheduled_for: null,
+    auto_send: false,
+    sent_at: null,
+    resolved_at: null,
+    notes: null,
+    suggested_resolution: 'Offer a complimentary follow-up visit.',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  }
+}

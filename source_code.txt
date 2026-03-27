@@ -210,11 +210,273 @@ export default function AnalyticsPage() {
   )
 }
 ===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\billing\page.tsx =====
+'use client'
+
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import type { Business } from '@/lib/types/database'
+import { Button } from '@/components/ui/button'
+
+const PLAN_DETAILS = {
+  free: {
+    name: 'Free',
+    price: '$0',
+    limit: 5,
+    features: ['5 AI responses/month', 'Copy-paste responses', 'Basic tone settings'],
+  },
+  starter: {
+    name: 'Starter',
+    price: '$19/mo',
+    limit: 30,
+    features: [
+      '30 AI responses/month',
+      'One-tap posting to Google',
+      'Dispute detection alerts',
+      'Custom response tone',
+      'Email notifications',
+    ],
+  },
+  pro: {
+    name: 'Pro',
+    price: '$39/mo',
+    limit: Infinity,
+    features: [
+      'Unlimited AI responses',
+      'Auto-post responses',
+      'Full dispute filing',
+      'Recovery outreach',
+      'Analytics dashboard',
+      'Priority support',
+    ],
+  },
+} as const
+
 export default function BillingPage() {
+  const [business, setBusiness] = useState<Business | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
+  const [portalLoading, setPortalLoading] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('businesses')
+        .select('*')
+        .limit(1)
+        .single()
+
+      if (data) setBusiness(data as Business)
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  async function handleUpgrade(plan: 'starter' | 'pro') {
+    setCheckoutLoading(plan)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      })
+      const json = await res.json()
+      if (json.data?.url) {
+        window.location.href = json.data.url
+      }
+    } finally {
+      setCheckoutLoading(null)
+    }
+  }
+
+  async function handleManage() {
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' })
+      const json = await res.json()
+      if (json.data?.url) {
+        window.location.href = json.data.url
+      }
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-6">
+        <div className="h-8 bg-gray-100 rounded w-1/3" />
+        <div className="h-32 bg-gray-100 rounded-lg" />
+      </div>
+    )
+  }
+
+  if (!business) return null
+
+  const plan = PLAN_DETAILS[business.plan] ?? PLAN_DETAILS.free
+  const usageLimit = plan.limit
+  const usageCount = business.monthly_response_count
+  const usagePercent = usageLimit === Infinity ? 0 : Math.min(100, Math.round((usageCount / usageLimit) * 100))
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
-      <p className="mt-2 text-sm text-gray-500">Manage your subscription and payment method.</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage your subscription and usage.
+        </p>
+      </div>
+
+      {/* Current plan */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {plan.name} Plan
+            </h2>
+            <p className="text-sm text-gray-500">{plan.price}</p>
+          </div>
+          {business.plan !== 'free' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleManage}
+              disabled={portalLoading}
+            >
+              {portalLoading ? 'Loading...' : 'Manage Subscription'}
+            </Button>
+          )}
+        </div>
+
+        {/* Usage bar */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-sm text-gray-600">
+              AI responses this month
+            </span>
+            <span className="text-sm font-medium text-gray-900">
+              {usageCount} / {usageLimit === Infinity ? 'âˆž' : usageLimit}
+            </span>
+          </div>
+          {usageLimit !== Infinity && (
+            <div className="w-full bg-gray-100 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full transition-all ${
+                  usagePercent >= 90 ? 'bg-red-500' : usagePercent >= 70 ? 'bg-yellow-500' : 'bg-gray-900'
+                }`}
+                style={{ width: `${usagePercent}%` }}
+              />
+            </div>
+          )}
+          {usageLimit !== Infinity && usagePercent >= 90 && (
+            <p className="mt-1.5 text-xs text-red-600">
+              You&apos;re running low on responses. Upgrade for more.
+            </p>
+          )}
+        </div>
+
+        {/* Current plan features */}
+        <ul className="mt-4 space-y-1.5">
+          {plan.features.map((f) => (
+            <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
+              <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Upgrade cards (only show plans above current) */}
+      {business.plan === 'free' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <UpgradeCard
+            name="Starter"
+            price="$19/mo"
+            features={PLAN_DETAILS.starter.features}
+            onUpgrade={() => handleUpgrade('starter')}
+            loading={checkoutLoading === 'starter'}
+            disabled={checkoutLoading !== null}
+          />
+          <UpgradeCard
+            name="Pro"
+            price="$39/mo"
+            features={PLAN_DETAILS.pro.features}
+            onUpgrade={() => handleUpgrade('pro')}
+            loading={checkoutLoading === 'pro'}
+            disabled={checkoutLoading !== null}
+            highlighted
+          />
+        </div>
+      )}
+
+      {business.plan === 'starter' && (
+        <div className="max-w-sm">
+          <UpgradeCard
+            name="Pro"
+            price="$39/mo"
+            features={PLAN_DETAILS.pro.features}
+            onUpgrade={() => handleUpgrade('pro')}
+            loading={checkoutLoading === 'pro'}
+            disabled={checkoutLoading !== null}
+            highlighted
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function UpgradeCard({
+  name,
+  price,
+  features,
+  onUpgrade,
+  loading,
+  disabled,
+  highlighted,
+}: {
+  name: string
+  price: string
+  features: readonly string[]
+  onUpgrade: () => void
+  loading: boolean
+  disabled: boolean
+  highlighted?: boolean
+}) {
+  return (
+    <div
+      className={`rounded-xl p-6 ${
+        highlighted
+          ? 'border-2 border-gray-900 bg-white'
+          : 'border border-gray-200 bg-white'
+      }`}
+    >
+      {highlighted && (
+        <span className="inline-block bg-gray-900 text-white text-xs px-2 py-0.5 rounded-full font-medium mb-3">
+          Recommended
+        </span>
+      )}
+      <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
+      <p className="text-2xl font-bold text-gray-900 mt-1">{price}</p>
+      <ul className="mt-4 space-y-2">
+        {features.map((f) => (
+          <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+            <svg className="w-4 h-4 text-gray-900 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {f}
+          </li>
+        ))}
+      </ul>
+      <Button
+        className="w-full mt-6"
+        onClick={onUpgrade}
+        disabled={disabled}
+      >
+        {loading ? 'Redirecting...' : `Upgrade to ${name}`}
+      </Button>
     </div>
   )
 }
@@ -430,11 +692,358 @@ export default function OnboardingPage() {
   )
 }
 ===== C:\Users\mikeg\replyengine\app\(dashboard)\dashboard\recovery\page.tsx =====
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import type {
+  Review,
+  ReviewDisputeWithReview,
+  RecoveryOutreachWithReview,
+} from '@/lib/types/database'
+import { buildApiUrl } from '@/lib/utils/selected-business'
+import { DisputeCard } from '@/components/dashboard/dispute-card'
+import { RecoveryCard } from '@/components/dashboard/recovery-card'
+import { StarRating } from '@/components/dashboard/star-rating'
+import { Button } from '@/components/ui/button'
+import { formatRelativeDate } from '@/lib/utils/format'
+
+type Tab = 'shield' | 'recover'
+
 export default function RecoveryPage() {
+  const [tab, setTab] = useState<Tab>('shield')
+  const [disputes, setDisputes] = useState<ReviewDisputeWithReview[]>([])
+  const [outreach, setOutreach] = useState<RecoveryOutreachWithReview[]>([])
+  const [negativeReviews, setNegativeReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [disputeRes, recoveryRes, reviewsRes] = await Promise.all([
+        fetch(buildApiUrl('/api/disputes')),
+        fetch(buildApiUrl('/api/recovery')),
+        fetch(buildApiUrl('/api/reviews', { star_rating: '1', per_page: '50' })),
+      ])
+
+      const [disputeJson, recoveryJson, reviewsJson] = await Promise.all([
+        disputeRes.json(),
+        recoveryRes.json(),
+        reviewsRes.json(),
+      ])
+
+      setDisputes(disputeJson.data ?? [])
+      setOutreach(recoveryJson.data ?? [])
+
+      // Also fetch 2-star reviews
+      const reviews2Res = await fetch(buildApiUrl('/api/reviews', { star_rating: '2', per_page: '50' }))
+      const reviews2Json = await reviews2Res.json()
+
+      const allNegative = [
+        ...(reviewsJson.data ?? []),
+        ...(reviews2Json.data ?? []),
+      ].sort((a: Review, b: Review) =>
+        (b.review_date ?? '').localeCompare(a.review_date ?? '')
+      )
+
+      setNegativeReviews(allNegative)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // Stats
+  const activeDisputes = disputes.filter((d) => d.status !== 'dismissed')
+  const filedDisputes = disputes.filter((d) =>
+    ['submitted', 'under_review', 'removed', 'denied'].includes(d.status)
+  )
+  const removedDisputes = disputes.filter((d) => d.status === 'removed')
+
+  const sentOutreach = outreach.filter((o) =>
+    ['sent', 'responded', 'resolved'].includes(o.status)
+  )
+  const resolvedOutreach = outreach.filter((o) => o.status === 'resolved')
+
+  // Negative reviews without outreach
+  const outreachReviewIds = new Set(outreach.map((o) => o.review_id))
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">Recovery</h1>
-      <p className="mt-2 text-sm text-gray-500">Negative review recovery outreach.</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Recovery</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Detect fake reviews and recover unhappy customers.
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          onClick={() => setTab('shield')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === 'shield'
+              ? 'border-gray-900 text-gray-900'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Shield â€” Disputes
+          {activeDisputes.length > 0 && (
+            <span className="ml-2 bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-full">
+              {activeDisputes.filter((d) => d.status === 'detected').length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab('recover')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === 'recover'
+              ? 'border-gray-900 text-gray-900'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Recover â€” Outreach
+          {negativeReviews.filter((r) => !outreachReviewIds.has(r.id)).length > 0 && (
+            <span className="ml-2 bg-yellow-100 text-yellow-700 text-xs px-1.5 py-0.5 rounded-full">
+              {negativeReviews.filter((r) => !outreachReviewIds.has(r.id)).length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse">
+              <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
+              <div className="h-3 bg-gray-100 rounded w-2/3 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : tab === 'shield' ? (
+        <ShieldTab
+          disputes={disputes}
+          activeCount={activeDisputes.length}
+          filedCount={filedDisputes.length}
+          removedCount={removedDisputes.length}
+          onUpdate={(updated) =>
+            setDisputes((prev) =>
+              prev.map((d) => (d.id === updated.id ? updated : d))
+            )
+          }
+        />
+      ) : (
+        <RecoverTab
+          outreach={outreach}
+          negativeReviews={negativeReviews}
+          outreachReviewIds={outreachReviewIds}
+          sentCount={sentOutreach.length}
+          resolvedCount={resolvedOutreach.length}
+          onOutreachUpdate={(updated) =>
+            setOutreach((prev) =>
+              prev.map((o) => (o.id === updated.id ? updated : o))
+            )
+          }
+          onOutreachCreated={(created) => setOutreach((prev) => [created, ...prev])}
+        />
+      )}
+    </div>
+  )
+}
+
+// ===================== SHIELD TAB =====================
+
+function ShieldTab({
+  disputes,
+  activeCount,
+  filedCount,
+  removedCount,
+  onUpdate,
+}: {
+  disputes: ReviewDisputeWithReview[]
+  activeCount: number
+  filedCount: number
+  removedCount: number
+  onUpdate: (updated: ReviewDisputeWithReview) => void
+}) {
+  const active = disputes.filter((d) => d.status !== 'dismissed')
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+          <p className="text-2xl font-semibold text-gray-900">{activeCount}</p>
+          <p className="text-xs text-gray-500">Flagged</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+          <p className="text-2xl font-semibold text-gray-900">{filedCount}</p>
+          <p className="text-xs text-gray-500">Disputes filed</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+          <p className="text-2xl font-semibold text-green-600">{removedCount}</p>
+          <p className="text-xs text-gray-500">Removed</p>
+        </div>
+      </div>
+
+      {active.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <p className="text-gray-500 text-sm">
+            No suspicious reviews detected.
+          </p>
+          <p className="text-gray-400 text-xs mt-1">
+            We automatically scan every new review for policy violations.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {active.map((dispute) => (
+            <DisputeCard key={dispute.id} dispute={dispute} onUpdate={onUpdate} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===================== RECOVER TAB =====================
+
+function RecoverTab({
+  outreach,
+  negativeReviews,
+  outreachReviewIds,
+  sentCount,
+  resolvedCount,
+  onOutreachUpdate,
+  onOutreachCreated,
+}: {
+  outreach: RecoveryOutreachWithReview[]
+  negativeReviews: Review[]
+  outreachReviewIds: Set<string>
+  sentCount: number
+  resolvedCount: number
+  onOutreachUpdate: (updated: RecoveryOutreachWithReview) => void
+  onOutreachCreated: (created: RecoveryOutreachWithReview) => void
+}) {
+  const withoutOutreach = negativeReviews.filter((r) => !outreachReviewIds.has(r.id))
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+          <p className="text-2xl font-semibold text-gray-900">{negativeReviews.length}</p>
+          <p className="text-xs text-gray-500">Negative reviews</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+          <p className="text-2xl font-semibold text-gray-900">{sentCount}</p>
+          <p className="text-xs text-gray-500">Outreach sent</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+          <p className="text-2xl font-semibold text-green-600">{resolvedCount}</p>
+          <p className="text-xs text-gray-500">Recovered</p>
+        </div>
+      </div>
+
+      {/* Existing outreach */}
+      {outreach.length > 0 && (
+        <div className="space-y-4 mb-8">
+          {outreach
+            .filter((o) => o.status !== 'dismissed')
+            .map((o) => (
+              <RecoveryCard key={o.id} outreach={o} onUpdate={onOutreachUpdate} />
+            ))}
+        </div>
+      )}
+
+      {/* Reviews without outreach */}
+      {withoutOutreach.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+            Reviews needing outreach
+          </h3>
+          <div className="space-y-3">
+            {withoutOutreach.map((review) => (
+              <NegativeReviewRow
+                key={review.id}
+                review={review}
+                onGenerated={onOutreachCreated}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {negativeReviews.length === 0 && outreach.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+          <p className="text-gray-500 text-sm">
+            No negative reviews to recover. That&apos;s great news!
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Row for a negative review that doesn't have outreach yet
+function NegativeReviewRow({
+  review,
+  onGenerated,
+}: {
+  review: Review
+  onGenerated: (created: RecoveryOutreachWithReview) => void
+}) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleGenerate() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_id: review.id }),
+      })
+      const json = await res.json()
+      if (json.data) onGenerated(json.data)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 flex items-start gap-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm font-medium text-gray-900 truncate">
+            {review.reviewer_name ?? 'Anonymous'}
+          </span>
+          <StarRating rating={review.star_rating} size="sm" />
+          <span className="text-xs text-gray-400">
+            {formatRelativeDate(review.review_date)}
+          </span>
+        </div>
+        <p className="text-sm text-gray-600 line-clamp-2">
+          {review.review_text ?? '(No text)'}
+        </p>
+      </div>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={handleGenerate}
+        disabled={loading}
+        className="flex-shrink-0"
+      >
+        {loading ? 'Generating...' : 'Generate Recovery'}
+      </Button>
     </div>
   )
 }
@@ -469,6 +1078,7 @@ export default function SettingsPage() {
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { buildApiUrl, getSelectedBusinessId } from '@/lib/utils/selected-business'
 import type { DashboardStats, Review } from '@/lib/types/database'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { ReviewCard } from '@/components/dashboard/review-card'
@@ -488,19 +1098,22 @@ export default function OverviewPage() {
       const { data: businesses } = await supabase
         .from('businesses')
         .select('id, name')
-        .limit(1)
+        .order('created_at', { ascending: true })
 
       if (!businesses || businesses.length === 0) {
         router.push('/dashboard/onboarding')
         return
       }
 
-      setBusinessName(businesses[0].name)
+      // Use selected business or first one
+      const selectedId = getSelectedBusinessId()
+      const biz = businesses.find((b) => b.id === selectedId) ?? businesses[0]
+      setBusinessName(biz.name)
 
       // Fetch stats and recent reviews in parallel
       const [statsRes, reviewsRes] = await Promise.all([
-        fetch('/api/dashboard/stats'),
-        fetch('/api/reviews?per_page=5'),
+        fetch(buildApiUrl('/api/dashboard/stats')),
+        fetch(buildApiUrl('/api/reviews', { per_page: '5' })),
       ])
 
       const [statsJson, reviewsJson] = await Promise.all([
@@ -597,6 +1210,7 @@ export default function OverviewPage() {
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { BusinessSwitcher } from '@/components/dashboard/business-switcher'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -664,6 +1278,9 @@ export default function DashboardLayout({
               </svg>
             </button>
           </div>
+
+          {/* Business switcher */}
+          <BusinessSwitcher />
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1">
@@ -775,16 +1392,219 @@ function BillingIcon({ className }: { className?: string }) {
     </svg>
   )
 }
-===== C:\Users\mikeg\replyengine\app\(marketing)\page.tsx =====
+===== C:\Users\mikeg\replyengine\app\(marketing)\free\page.tsx =====
+import type { Metadata } from 'next'
 import Link from 'next/link'
+import { FreeGeneratorForm } from '@/components/marketing/free-generator-form'
+
+export const metadata: Metadata = {
+  title: 'Free Google Review Response Generator â€” ReplyEngine',
+  description:
+    'Generate professional, personalized responses to Google reviews instantly. Free tool â€” no signup required. Works for restaurants, dentists, salons, contractors, and more.',
+  openGraph: {
+    title: 'Free Google Review Response Generator',
+    description:
+      'Generate professional, personalized responses to Google reviews instantly. No signup required.',
+    type: 'website',
+  },
+}
+
+const FAQ_ITEMS = [
+  {
+    question: 'How should I respond to a negative Google review?',
+    answer:
+      'Acknowledge the customer\'s experience with empathy, apologize for any shortcomings without admitting legal fault, and offer a specific way to make it right. Always invite them to reach out directly so you can resolve the issue privately. A thoughtful response to a negative review can actually build trust with prospective customers who see it.',
+  },
+  {
+    question: 'Does responding to Google reviews help SEO?',
+    answer:
+      'Yes. Google has confirmed that responding to reviews improves your local search ranking. Businesses that actively respond to reviews signal to Google that they are engaged and trustworthy, which can boost visibility in Google Maps and local search results.',
+  },
+  {
+    question: 'Should I respond to every Google review?',
+    answer:
+      'Ideally, yes. Responding to every review â€” positive and negative â€” shows customers that you value their feedback. At minimum, always respond to negative reviews and any review that includes specific details or questions. Consistent responses also contribute to your local SEO.',
+  },
+  {
+    question: 'How quickly should I respond to reviews?',
+    answer:
+      'Aim to respond within 24-48 hours. Faster responses show customers you are attentive and care about their experience. For negative reviews, responding quickly also helps prevent the situation from escalating on other platforms.',
+  },
+]
+
+export default function FreeToolPage() {
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/" className="text-lg font-bold text-gray-900">
+            ReplyEngine
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/free"
+              className="text-sm text-gray-900 font-medium"
+            >
+              Free Tool
+            </Link>
+            <Link
+              href="/login"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              className="text-sm bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors hidden sm:inline-block"
+            >
+              Get started
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-12 sm:py-16">
+        {/* Hero */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
+            Free Google Review Response Generator
+          </h1>
+          <p className="mt-3 text-lg text-gray-500 max-w-2xl mx-auto">
+            Paste any review. Get a personalized, professional response in seconds.
+          </p>
+        </div>
+
+        {/* Form + Result */}
+        <FreeGeneratorForm />
+
+        {/* CTA Section */}
+        <div className="mt-16 text-center bg-gray-50 rounded-xl p-8 sm:p-12 border border-gray-200">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+            Want this for EVERY review â€” automatically?
+          </h2>
+          <p className="mt-3 text-gray-500 max-w-lg mx-auto">
+            ReplyEngine connects to your Google Business Profile and drafts
+            personalized responses to every review. Approve with one tap.
+          </p>
+          <div className="mt-6">
+            <Link
+              href="/signup"
+              className="inline-block bg-gray-900 text-white px-8 py-3 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors"
+            >
+              Start Free Trial
+            </Link>
+          </div>
+          <p className="mt-3 text-xs text-gray-400">
+            No credit card required &middot; 14-day free trial &middot; Cancel anytime
+          </p>
+        </div>
+
+        {/* FAQ Section */}
+        <div className="mt-16">
+          <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-6">
+            {FAQ_ITEMS.map((item) => (
+              <div key={item.question}>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {item.question}
+                </h3>
+                <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">
+                  {item.answer}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 mt-16">
+        <div className="max-w-5xl mx-auto px-4 py-8 text-center text-xs text-gray-400">
+          &copy; {new Date().getFullYear()} ReplyEngine. All rights reserved.
+        </div>
+      </footer>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\(marketing)\page.tsx =====
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { PricingToggle } from '@/components/marketing/pricing-toggle'
+
+export const metadata: Metadata = {
+  title: 'ReplyEngine â€” AI-Powered Google Review Response Manager',
+  description:
+    'Respond to every Google review with AI-powered, personalized responses. Connect your Google Business Profile, get draft responses instantly, and approve with one tap.',
+  openGraph: {
+    title: 'ReplyEngine â€” AI-Powered Google Review Response Manager',
+    description:
+      'Respond to every Google review with AI-powered, personalized responses. Approve with one tap.',
+    type: 'website',
+  },
+}
+
+const FAQ_ITEMS = [
+  {
+    q: 'What types of businesses can use ReplyEngine?',
+    a: 'Any business with a Google Business Profile â€” restaurants, dentists, plumbers, salons, law firms, auto shops, hotels, and more. If you get Google reviews, ReplyEngine works for you.',
+  },
+  {
+    q: 'How does the AI know what to say?',
+    a: 'You configure your business type, preferred tone, and custom instructions. The AI reads each review, picks up on specific details the customer mentioned, and crafts a response that matches your brand voice.',
+  },
+  {
+    q: 'Can I edit responses before posting?',
+    a: 'Absolutely. Every AI-drafted response goes through you first. You can approve it as-is, edit it, regenerate a new version, or skip it entirely. Nothing gets posted without your approval.',
+  },
+  {
+    q: 'What if I get a fake review?',
+    a: 'ReplyEngine automatically scans every new review for signs of spam or policy violations. When it detects a suspicious review, it alerts you and walks you through Google\'s dispute process to get it removed.',
+  },
+  {
+    q: 'Is there a free trial?',
+    a: 'Yes. Every paid plan comes with a 14-day free trial, no credit card required. The Free plan is available forever with 5 AI responses per month.',
+  },
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Yes, you can cancel your subscription at any time from the billing page. There are no long-term contracts or cancellation fees.',
+  },
+]
+
+const TESTIMONIALS = [
+  {
+    quote: 'We went from ignoring reviews to responding to every single one within hours. Our rating went from 4.1 to 4.6 in three months.',
+    name: 'Maria R.',
+    business: 'Bella Cucina Italian Restaurant',
+  },
+  {
+    quote: 'The dispute detection caught a competitor\'s fake review before it could hurt us. Worth every penny just for that.',
+    name: 'Dr. James Chen',
+    business: 'Bright Smile Dental',
+  },
+  {
+    quote: 'I used to spend an hour a day on reviews. Now it takes me five minutes. The AI nails our tone every time.',
+    name: 'Kevin O\'Brien',
+    business: 'O\'Brien Plumbing & HVAC',
+  },
+]
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
-      <header className="border-b border-gray-200">
+      {/* Header */}
+      <header className="border-b border-gray-200 sticky top-0 bg-white/95 backdrop-blur-sm z-50">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <span className="text-lg font-bold text-gray-900">ReplyEngine</span>
           <div className="flex items-center gap-4">
+            <Link
+              href="/free"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:inline"
+            >
+              Free Tool
+            </Link>
             <Link
               href="/login"
               className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
@@ -801,27 +1621,375 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-24 text-center">
-        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight">
-          Respond to every review
-          <br />
-          <span className="text-gray-400">with AI precision</span>
+      {/* ===== HERO ===== */}
+      <section className="max-w-5xl mx-auto px-4 py-16 sm:py-24 text-center">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight">
+          Never Ignore a Review Again
         </h1>
-        <p className="mt-6 text-lg text-gray-500 max-w-2xl mx-auto">
-          ReplyEngine connects to your Google Business Profile, drafts personalized
-          responses to every review, and lets you approve with one tap.
+        <p className="mt-6 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
+          ReplyEngine uses AI to draft personalized responses to every Google review.
+          Approve with one tap. Recover unhappy customers. Remove fake reviews.
         </p>
-        <div className="mt-10">
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href="/signup"
-            className="inline-block bg-gray-900 text-white px-8 py-3 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors"
+            className="w-full sm:w-auto bg-gray-900 text-white px-8 py-3 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors"
           >
-            Start free trial
+            Start Free Trial
+          </Link>
+          <Link
+            href="/free"
+            className="w-full sm:w-auto bg-white text-gray-900 px-8 py-3 rounded-md text-sm font-medium border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            Try Free Tool
           </Link>
         </div>
-      </main>
+        <p className="mt-4 text-xs text-gray-400">
+          No credit card required &middot; 14-day free trial
+        </p>
+      </section>
+
+      {/* ===== BEFORE / AFTER ===== */}
+      <section className="bg-gray-50 border-y border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-16 sm:py-20">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
+            See the difference
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Without */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </span>
+                <span className="text-sm font-semibold text-gray-900">Without ReplyEngine</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-3">Generic (what most businesses do)</p>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-500 italic leading-relaxed">
+                  &ldquo;Thank you for your feedback! We appreciate your support and look forward to seeing you again!&rdquo;
+                </p>
+              </div>
+            </div>
+
+            {/* With */}
+            <div className="bg-white rounded-xl border-2 border-gray-900 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+                <span className="text-sm font-semibold text-gray-900">With ReplyEngine</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-3">Personalized (what ReplyEngine writes)</p>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  &ldquo;Sarah, thank you so much for the kind words about our wood-fired margherita â€” it&apos;s our chef Marco&apos;s pride and joy. We&apos;re glad Jake took great care of you. Next time you visit Mike&apos;s Kitchen, ask about our new seasonal truffle pizza â€” I think you&apos;d love it. Hope to see you again soon.&rdquo;
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== HOW IT WORKS ===== */}
+      <section className="max-w-5xl mx-auto px-4 py-16 sm:py-20">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
+          How it works
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            {
+              step: '1',
+              title: 'Connect',
+              desc: 'Connect your Google Business Profile in 2 minutes. We handle the OAuth setup for you.',
+            },
+            {
+              step: '2',
+              title: 'Review',
+              desc: 'AI drafts personalized responses to every new review, matching your brand voice and tone.',
+            },
+            {
+              step: '3',
+              title: 'Approve',
+              desc: 'One tap to post. Edit if you want. Done. Spend 5 minutes instead of an hour.',
+            },
+          ].map((item) => (
+            <div key={item.step} className="text-center">
+              <div className="w-12 h-12 rounded-full bg-gray-900 text-white text-lg font-bold flex items-center justify-center mx-auto">
+                {item.step}
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-gray-900">{item.title}</h3>
+              <p className="mt-2 text-sm text-gray-500 leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== THREE PILLARS ===== */}
+      <section className="bg-gray-50 border-y border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-16 sm:py-20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Shield */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Shield</h3>
+              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
+                Remove fake and unfair reviews. Our AI detects policy violations and walks you through the removal process.
+              </p>
+            </div>
+
+            {/* Recover */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Recover</h3>
+              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
+                Turn unhappy customers into loyal ones. AI-powered private outreach resolves complaints before they hurt your rating.
+              </p>
+            </div>
+
+            {/* Amplify */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Amplify</h3>
+              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
+                Turn 5-star reviews into marketing. Every response subtly promotes your business to future customers reading your reviews.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== PRICING ===== */}
+      <section className="max-w-5xl mx-auto px-4 py-16 sm:py-20">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-4">
+          Simple, transparent pricing
+        </h2>
+        <p className="text-center text-gray-500 text-sm mb-10">
+          Start free. Upgrade when you&apos;re ready.
+        </p>
+        <PricingToggle />
+      </section>
+
+      {/* ===== SOCIAL PROOF ===== */}
+      <section className="bg-gray-50 border-y border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-16 sm:py-20">
+          <p className="text-center text-sm font-medium text-gray-400 mb-10">
+            Trusted by 100+ local businesses
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((t) => (
+              <div key={t.name} className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex gap-0.5 mb-3">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <svg key={s} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-sm font-medium text-gray-900">{t.name}</p>
+                  <p className="text-xs text-gray-400">{t.business}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== FAQ ===== */}
+      <section className="max-w-3xl mx-auto px-4 py-16 sm:py-20">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
+          Frequently asked questions
+        </h2>
+        <div className="space-y-6">
+          {FAQ_ITEMS.map((item) => (
+            <div key={item.q} className="border-b border-gray-100 pb-6 last:border-0">
+              <h3 className="text-sm font-semibold text-gray-900">{item.q}</h3>
+              <p className="mt-2 text-sm text-gray-500 leading-relaxed">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== FINAL CTA ===== */}
+      <section className="bg-gray-900">
+        <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white">
+            Your competitors are responding to their reviews. Are you?
+          </h2>
+          <div className="mt-8">
+            <Link
+              href="/signup"
+              className="inline-block bg-white text-gray-900 px-8 py-3 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors"
+            >
+              Start Free Trial
+            </Link>
+          </div>
+          <p className="mt-4 text-xs text-gray-400">
+            No credit card required &middot; 14-day free trial &middot; Cancel anytime
+          </p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+          <span>&copy; {new Date().getFullYear()} ReplyEngine. All rights reserved.</span>
+          <div className="flex items-center gap-4">
+            <Link href="/free" className="hover:text-gray-600 transition-colors">Free Tool</Link>
+            <Link href="/login" className="hover:text-gray-600 transition-colors">Sign in</Link>
+            <Link href="/signup" className="hover:text-gray-600 transition-colors">Get started</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   )
+}
+===== C:\Users\mikeg\replyengine\app\api\billing\checkout\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { getStripe } from '@/lib/stripe/client'
+import { getPriceId } from '@/lib/stripe/plans'
+import type { Business } from '@/lib/types/database'
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const CheckoutSchema = z.object({
+  plan: z.enum(['starter', 'pro']),
+})
+
+export async function POST(request: Request) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body: unknown = await request.json()
+  const parsed = CheckoutSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+      { status: 400 }
+    )
+  }
+
+  const priceId = getPriceId(parsed.data.plan)
+  if (!priceId) {
+    return NextResponse.json({ error: 'Plan not configured' }, { status: 500 })
+  }
+
+  // Get the business
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('owner_id', user.id)
+    .limit(1)
+    .single()
+
+  if (!business) {
+    return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+  }
+
+  const typedBusiness = business as Business
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
+  try {
+    const sessionParams: Record<string, unknown> = {
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/dashboard?upgraded=true`,
+      cancel_url: `${appUrl}/dashboard/billing`,
+      metadata: {
+        business_id: typedBusiness.id,
+        user_id: user.id,
+      },
+    }
+
+    if (typedBusiness.stripe_customer_id) {
+      sessionParams.customer = typedBusiness.stripe_customer_id
+    } else {
+      sessionParams.customer_email = user.email
+    }
+
+    const session = await getStripe().checkout.sessions.create(
+      sessionParams as Parameters<ReturnType<typeof getStripe>['checkout']['sessions']['create']>[0]
+    )
+
+    return NextResponse.json({ data: { url: session.url } })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create checkout'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+===== C:\Users\mikeg\replyengine\app\api\billing\portal\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { getStripe } from '@/lib/stripe/client'
+import type { Business } from '@/lib/types/database'
+import { NextResponse } from 'next/server'
+
+export async function POST() {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('owner_id', user.id)
+    .limit(1)
+    .single()
+
+  if (!business) {
+    return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+  }
+
+  const typedBusiness = business as Business
+
+  if (!typedBusiness.stripe_customer_id) {
+    return NextResponse.json(
+      { error: 'No active subscription found' },
+      { status: 400 }
+    )
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
+  try {
+    const session = await getStripe().billingPortal.sessions.create({
+      customer: typedBusiness.stripe_customer_id,
+      return_url: `${appUrl}/dashboard/billing`,
+    })
+
+    return NextResponse.json({ data: { url: session.url } })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create portal session'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
 ===== C:\Users\mikeg\replyengine\app\api\businesses\route.ts =====
 import { createClient } from '@/lib/supabase/server'
@@ -888,10 +2056,11 @@ export async function POST(request: Request) {
 }
 ===== C:\Users\mikeg\replyengine\app\api\dashboard\stats\route.ts =====
 import { createClient } from '@/lib/supabase/server'
+import { resolveBusinessId } from '@/lib/utils/resolve-business'
 import type { DashboardStats } from '@/lib/types/database'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -899,14 +2068,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user's business
-  const { data: businesses } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .limit(1)
+  const requestedId = request.nextUrl.searchParams.get('business_id')
+  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
 
-  if (!businesses || businesses.length === 0) {
+  if (!businessId) {
     const emptyStats: DashboardStats = {
       totalReviews: 0,
       pendingResponses: 0,
@@ -917,9 +2082,6 @@ export async function GET() {
     return NextResponse.json({ data: emptyStats })
   }
 
-  const businessId = businesses[0].id
-
-  // Fetch all reviews for this business
   const { data: reviews, error } = await supabase
     .from('reviews')
     .select('star_rating, response_status')
@@ -951,10 +2113,625 @@ export async function GET() {
 
   return NextResponse.json({ data: stats })
 }
+===== C:\Users\mikeg\replyengine\app\api\disputes\[disputeId]\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const UpdateDisputeSchema = z.object({
+  status: z.enum(['detected', 'flagged', 'submitted', 'under_review', 'removed', 'denied', 'dismissed']),
+  google_case_id: z.string().optional(),
+})
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: { disputeId: string } }
+) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body: unknown = await request.json()
+  const parsed = UpdateDisputeSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+      { status: 400 }
+    )
+  }
+
+  const updateData: Record<string, unknown> = {
+    status: parsed.data.status,
+  }
+
+  if (parsed.data.google_case_id) {
+    updateData.google_case_id = parsed.data.google_case_id
+  }
+
+  if (parsed.data.status === 'submitted') {
+    updateData.submitted_at = new Date().toISOString()
+  }
+
+  if (parsed.data.status === 'removed' || parsed.data.status === 'denied') {
+    updateData.resolved_at = new Date().toISOString()
+  }
+
+  const { data, error } = await supabase
+    .from('review_disputes')
+    .update(updateData)
+    .eq('id', params.disputeId)
+    .select('*, reviews(*)')
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to update dispute' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data })
+}
+===== C:\Users\mikeg\replyengine\app\api\disputes\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { resolveBusinessId } from '@/lib/utils/resolve-business'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(request: NextRequest) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const requestedId = request.nextUrl.searchParams.get('business_id')
+  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
+
+  if (!businessId) {
+    return NextResponse.json({ data: [] })
+  }
+
+  const { data, error } = await supabase
+    .from('review_disputes')
+    .select('*, reviews(*)')
+    .eq('business_id', businessId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to fetch disputes' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data })
+}
+===== C:\Users\mikeg\replyengine\app\api\free-generate\route.ts =====
+import Anthropic from '@anthropic-ai/sdk'
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const FreeGenerateSchema = z.object({
+  business_type: z.string().min(1, 'Business type is required'),
+  business_name: z.string().max(200).optional(),
+  tone: z.enum(['professional', 'friendly', 'casual', 'formal']).default('friendly'),
+  star_rating: z.number().int().min(1).max(5),
+  review_text: z.string().min(5, 'Review text must be at least 5 characters').max(5000),
+  reviewer_name: z.string().max(100).optional(),
+})
+
+// In-memory rate limiting: IP -> { count, windowStart }
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
+const RATE_LIMIT = 10
+const WINDOW_MS = 60 * 60 * 1000 // 1 hour
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+
+  // Clean up stale entries periodically
+  if (rateLimitMap.size > 10000) {
+    rateLimitMap.forEach((val, key) => {
+      if (now - val.windowStart > WINDOW_MS) {
+        rateLimitMap.delete(key)
+      }
+    })
+  }
+
+  if (!entry || now - entry.windowStart > WINDOW_MS) {
+    rateLimitMap.set(ip, { count: 1, windowStart: now })
+    return true
+  }
+
+  if (entry.count >= RATE_LIMIT) {
+    return false
+  }
+
+  entry.count++
+  return true
+}
+
+function getClientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  if (forwarded) {
+    return forwarded.split(',')[0].trim()
+  }
+  return request.headers.get('x-real-ip') ?? 'unknown'
+}
+
+export async function POST(request: Request) {
+  const ip = getClientIp(request)
+
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again later (10 per hour).' },
+      { status: 429 }
+    )
+  }
+
+  const body: unknown = await request.json()
+  const parsed = FreeGenerateSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+      { status: 400 }
+    )
+  }
+
+  const { business_type, business_name, tone, star_rating, review_text, reviewer_name } =
+    parsed.data
+
+  const displayName = business_name || 'your business'
+
+  const systemPrompt = [
+    `You are a review response assistant for "${displayName}", a ${business_type} business.`,
+    `Write responses in a ${tone} tone.`,
+    'Write a moderate-length response â€” around 3-5 sentences (roughly 100 words).',
+    '',
+    'Guidelines:',
+    '- Address the reviewer by their first name when available',
+    '- Reference specific details from their review to show you read it',
+    '- For positive reviews: express genuine gratitude and reinforce what they enjoyed',
+    '- For negative reviews: acknowledge their experience with empathy, offer to make it right, provide a way to reach you directly',
+    '- Never admit legal fault or liability',
+    '- Do not use generic phrases like "valued customer" or "we appreciate your feedback"',
+    business_name ? '- Mention the business name naturally once' : '',
+    '- Do not use exclamation marks excessively',
+    '',
+    'Return ONLY the response text. No labels, no headers, no metadata.',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const userPrompt = [
+    `Reviewer: ${reviewer_name || 'Anonymous'}`,
+    `Rating: ${star_rating}/5 stars`,
+    '',
+    'Review:',
+    review_text,
+  ].join('\n')
+
+  try {
+    const client = new Anthropic()
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 512,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    })
+
+    const response =
+      message.content[0].type === 'text' ? message.content[0].text.trim() : ''
+
+    return NextResponse.json({ data: { response } })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Generation failed'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+===== C:\Users\mikeg\replyengine\app\api\recovery\[outreachId]\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const UpdateRecoverySchema = z.object({
+  status: z.enum(['draft', 'sent', 'responded', 'resolved', 'dismissed']).optional(),
+  notes: z.string().max(2000).optional(),
+  message_draft: z.string().max(5000).optional(),
+})
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: { outreachId: string } }
+) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body: unknown = await request.json()
+  const parsed = UpdateRecoverySchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+      { status: 400 }
+    )
+  }
+
+  const updateData: Record<string, unknown> = {}
+
+  if (parsed.data.status) {
+    updateData.status = parsed.data.status
+  }
+
+  if (parsed.data.notes !== undefined) {
+    updateData.notes = parsed.data.notes
+  }
+
+  if (parsed.data.message_draft !== undefined) {
+    updateData.message_draft = parsed.data.message_draft
+  }
+
+  if (parsed.data.status === 'sent') {
+    updateData.sent_at = new Date().toISOString()
+  }
+
+  if (parsed.data.status === 'resolved') {
+    updateData.resolved_at = new Date().toISOString()
+  }
+
+  const { data, error } = await supabase
+    .from('recovery_outreach')
+    .update(updateData)
+    .eq('id', params.outreachId)
+    .select('*, reviews(*)')
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to update outreach' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data })
+}
+===== C:\Users\mikeg\replyengine\app\api\recovery\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { resolveBusinessId } from '@/lib/utils/resolve-business'
+import { generateRecoveryOutreach } from '@/lib/ai/generate-recovery'
+import type { Business, Review } from '@/lib/types/database'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const CreateRecoverySchema = z.object({
+  review_id: z.string().uuid(),
+})
+
+export async function GET(request: NextRequest) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const requestedId = request.nextUrl.searchParams.get('business_id')
+  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
+
+  if (!businessId) {
+    return NextResponse.json({ data: [] })
+  }
+
+  const { data, error } = await supabase
+    .from('recovery_outreach')
+    .select('*, reviews(*)')
+    .eq('business_id', businessId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to fetch recovery outreach' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data })
+}
+
+export async function POST(request: Request) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body: unknown = await request.json()
+  const parsed = CreateRecoverySchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+      { status: 400 }
+    )
+  }
+
+  // Fetch review
+  const { data: review, error: reviewError } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('id', parsed.data.review_id)
+    .single()
+
+  if (reviewError || !review) {
+    return NextResponse.json({ error: 'Review not found' }, { status: 404 })
+  }
+
+  const typedReview = review as Review
+
+  // Fetch business
+  const { data: business, error: businessError } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('id', typedReview.business_id)
+    .single()
+
+  if (businessError || !business) {
+    return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+  }
+
+  const typedBusiness = business as Business
+
+  // Check if outreach already exists
+  const { data: existing } = await supabase
+    .from('recovery_outreach')
+    .select('id')
+    .eq('review_id', parsed.data.review_id)
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    return NextResponse.json(
+      { error: 'Recovery outreach already exists for this review' },
+      { status: 409 }
+    )
+  }
+
+  try {
+    const result = await generateRecoveryOutreach(typedReview, typedBusiness)
+
+    const { data: outreach, error: insertError } = await supabase
+      .from('recovery_outreach')
+      .insert({
+        review_id: typedReview.id,
+        business_id: typedBusiness.id,
+        outreach_type: 'email',
+        message_draft: result.message,
+        suggested_resolution: result.suggestedResolution,
+        status: 'draft',
+      })
+      .select('*, reviews(*)')
+      .single()
+
+    if (insertError) {
+      return NextResponse.json({ error: 'Failed to save outreach' }, { status: 500 })
+    }
+
+    return NextResponse.json({ data: outreach }, { status: 201 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to generate recovery message'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
 ===== C:\Users\mikeg\replyengine\app\api\reviews\[reviewId]\generate\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { generateReviewResponse } from '@/lib/ai/generate-response'
+import { analyzeForDispute } from '@/lib/ai/analyze-dispute'
+import { canGenerateResponse } from '@/lib/utils/plan-limits'
+import type { Business, Review, ResponsePattern } from '@/lib/types/database'
+import { NextResponse } from 'next/server'
+
+export async function POST(
+  _request: Request,
+  { params }: { params: { reviewId: string } }
+) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Fetch the review
+  const { data: review, error: reviewError } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('id', params.reviewId)
+    .single()
+
+  if (reviewError || !review) {
+    return NextResponse.json({ error: 'Review not found' }, { status: 404 })
+  }
+
+  const typedReview = review as Review
+
+  // Fetch the business
+  const { data: business, error: businessError } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('id', typedReview.business_id)
+    .single()
+
+  if (businessError || !business) {
+    return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+  }
+
+  const typedBusiness = business as Business
+
+  // Check plan limits
+  if (!canGenerateResponse(typedBusiness)) {
+    return NextResponse.json(
+      { error: 'Monthly response limit reached. Upgrade your plan for more responses.' },
+      { status: 403 }
+    )
+  }
+
+  // Fetch matching response patterns
+  const { data: patterns } = await supabase
+    .from('response_patterns')
+    .select('*')
+    .eq('business_id', typedBusiness.id)
+    .eq('is_active', true)
+
+  const typedPatterns = (patterns ?? []) as ResponsePattern[]
+
+  // Generate AI response
+  try {
+    const result = await generateReviewResponse(
+      typedReview,
+      typedBusiness,
+      typedPatterns
+    )
+
+    // Save the response to the review
+    const { data: updated, error: updateError } = await supabase
+      .from('reviews')
+      .update({
+        ai_response: result.response,
+        response_status: 'draft',
+        sentiment: result.sentiment,
+        key_topics: result.keyTopics,
+      })
+      .eq('id', params.reviewId)
+      .select()
+      .single()
+
+    if (updateError) {
+      return NextResponse.json(
+        { error: 'Failed to save generated response' },
+        { status: 500 }
+      )
+    }
+
+    // Increment monthly response count
+    const { error: rpcError } = await supabase.rpc('increment_response_count', {
+      business_id_input: typedBusiness.id,
+    })
+
+    if (rpcError) {
+      // RPC may not exist yet â€” fall back to manual increment
+      await supabase
+        .from('businesses')
+        .update({
+          monthly_response_count: typedBusiness.monthly_response_count + 1,
+        })
+        .eq('id', typedBusiness.id)
+    }
+
+    // Auto-analyze 1-2 star reviews for potential disputes
+    if (typedReview.star_rating <= 2) {
+      try {
+        const dispute = await analyzeForDispute(typedReview)
+        if (dispute.isDisputable) {
+          await supabase.from('review_disputes').insert({
+            review_id: typedReview.id,
+            business_id: typedBusiness.id,
+            reason: dispute.violations.join(', '),
+            ai_confidence_score: dispute.confidence === 'high' ? 0.9 : dispute.confidence === 'medium' ? 0.6 : 0.3,
+            ai_analysis: dispute.reasoning,
+            violations: dispute.violations,
+            suggested_dispute_text: dispute.suggestedDisputeText,
+            confidence: dispute.confidence,
+            status: 'detected',
+          })
+        }
+      } catch {
+        // Dispute analysis is non-critical â€” don't fail the response generation
+      }
+    }
+
+    return NextResponse.json({ data: updated })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'AI generation failed'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
 ===== C:\Users\mikeg\replyengine\app\api\reviews\[reviewId]\route.ts =====
+import { createClient } from '@/lib/supabase/server'
+import { UpdateReviewStatusSchema } from '@/lib/types/api'
+import { NextResponse } from 'next/server'
+
+export async function GET(
+  _request: Request,
+  { params }: { params: { reviewId: string } }
+) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('id', params.reviewId)
+    .single()
+
+  if (error || !data) {
+    return NextResponse.json({ error: 'Review not found' }, { status: 404 })
+  }
+
+  return NextResponse.json({ data })
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: { reviewId: string } }
+) {
+  const supabase = createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body: unknown = await request.json()
+  const parsed = UpdateReviewStatusSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+      { status: 400 }
+    )
+  }
+
+  const updateData: Record<string, unknown> = {
+    response_status: parsed.data.status,
+  }
+
+  if (parsed.data.edited_response !== undefined) {
+    updateData.edited_response = parsed.data.edited_response
+  }
+
+  if (parsed.data.status === 'posted') {
+    updateData.posted_at = new Date().toISOString()
+  }
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .update(updateData)
+    .eq('id', params.reviewId)
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to update review' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data })
+}
 ===== C:\Users\mikeg\replyengine\app\api\reviews\route.ts =====
 import { createClient } from '@/lib/supabase/server'
+import { resolveBusinessId } from '@/lib/utils/resolve-business'
 import { ReviewsQuerySchema } from '@/lib/types/api'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -966,20 +2743,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user's business
-  const { data: businesses } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .limit(1)
+  const requestedId = request.nextUrl.searchParams.get('business_id')
+  const businessId = await resolveBusinessId(supabase, user.id, requestedId)
 
-  if (!businesses || businesses.length === 0) {
+  if (!businessId) {
     return NextResponse.json({ data: [], total: 0 })
   }
 
-  const businessId = businesses[0].id
-
-  // Parse query params
   const searchParams = Object.fromEntries(request.nextUrl.searchParams)
   const parsed = ReviewsQuerySchema.safeParse(searchParams)
 
@@ -1016,6 +2786,115 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ data, total: count ?? 0, page, per_page })
 }
+===== C:\Users\mikeg\replyengine\app\api\webhooks\stripe\route.ts =====
+import { getStripe } from '@/lib/stripe/client'
+import { planFromPriceId } from '@/lib/stripe/plans'
+import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
+
+// Use service role to bypass RLS in webhook handler
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
+export async function POST(request: Request) {
+  const body = await request.text()
+  const signature = request.headers.get('stripe-signature')
+
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
+  }
+
+  let event
+  try {
+    event = getStripe().webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    )
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Signature verification failed'
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
+
+  const supabase = getAdminClient()
+
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object
+      const businessId = session.metadata?.business_id
+      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.toString()
+      const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.toString()
+
+      if (!businessId || !subscriptionId) break
+
+      // Get the subscription to find the price ID
+      const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
+      const priceId = subscription.items.data[0]?.price.id ?? ''
+      const plan = planFromPriceId(priceId)
+
+      await supabase
+        .from('businesses')
+        .update({
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId,
+          plan,
+        })
+        .eq('id', businessId)
+
+      break
+    }
+
+    case 'customer.subscription.updated': {
+      const subscription = event.data.object
+      const priceId = subscription.items.data[0]?.price.id ?? ''
+      const plan = planFromPriceId(priceId)
+      const customerId = typeof subscription.customer === 'string' ? subscription.customer : ''
+
+      if (!customerId) break
+
+      await supabase
+        .from('businesses')
+        .update({ plan })
+        .eq('stripe_customer_id', customerId)
+
+      break
+    }
+
+    case 'customer.subscription.deleted': {
+      const subscription = event.data.object
+      const customerId = typeof subscription.customer === 'string' ? subscription.customer : ''
+
+      if (!customerId) break
+
+      await supabase
+        .from('businesses')
+        .update({
+          plan: 'free',
+          stripe_subscription_id: null,
+        })
+        .eq('stripe_customer_id', customerId)
+
+      break
+    }
+
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object
+      const customerId = typeof invoice.customer === 'string' ? invoice.customer : ''
+
+      if (!customerId) break
+
+      // We don't have a dedicated column â€” store in the existing fields
+      // The billing page will check subscription status directly
+      break
+    }
+  }
+
+  return NextResponse.json({ received: true })
+}
 ===== C:\Users\mikeg\replyengine\app\layout.tsx =====
 import type { Metadata } from 'next'
 import './globals.css'
@@ -1034,6 +2913,603 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">{children}</body>
     </html>
+  )
+}
+===== C:\Users\mikeg\replyengine\app\sitemap.ts =====
+import type { MetadataRoute } from 'next'
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://replyengine.com'
+
+  return [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 1,
+    },
+    {
+      url: `${baseUrl}/free`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/login`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/signup`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+  ]
+}
+===== C:\Users\mikeg\replyengine\components\dashboard\business-switcher.tsx =====
+'use client'
+
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { getSelectedBusinessId, setSelectedBusinessId } from '@/lib/utils/selected-business'
+
+interface BusinessOption {
+  id: string
+  name: string
+  business_type: string | null
+}
+
+export function BusinessSwitcher() {
+  const [businesses, setBusinesses] = useState<BusinessOption[]>([])
+  const [selected, setSelected] = useState<string>('')
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('businesses')
+        .select('id, name, business_type')
+        .order('created_at', { ascending: true })
+
+      if (data && data.length > 0) {
+        setBusinesses(data)
+
+        const storedId = getSelectedBusinessId()
+        const valid = data.find((b) => b.id === storedId)
+        const activeId = valid ? valid.id : data[0].id
+        setSelected(activeId)
+        setSelectedBusinessId(activeId)
+      }
+    }
+    load()
+  }, [])
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newId = e.target.value
+    setSelected(newId)
+    setSelectedBusinessId(newId)
+    window.location.reload()
+  }
+
+  if (businesses.length <= 1) return null
+
+  return (
+    <div className="px-3 pb-3">
+      <select
+        value={selected}
+        onChange={handleChange}
+        className="w-full px-2 py-1.5 border border-gray-200 rounded-md text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent truncate"
+      >
+        {businesses.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}{b.business_type ? ` â€” ${b.business_type}` : ''}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\dashboard\dispute-card.tsx =====
+'use client'
+
+import { useState } from 'react'
+import type { ReviewDisputeWithReview } from '@/lib/types/database'
+import { StarRating } from '@/components/dashboard/star-rating'
+import { Button } from '@/components/ui/button'
+import { formatRelativeDate } from '@/lib/utils/format'
+
+const VIOLATION_COLORS: Record<string, string> = {
+  SPAM_FAKE: 'bg-red-100 text-red-700',
+  OFFENSIVE: 'bg-orange-100 text-orange-700',
+  CONFLICT_OF_INTEREST: 'bg-purple-100 text-purple-700',
+  OFF_TOPIC: 'bg-blue-100 text-blue-700',
+  RESTRICTED_CONTENT: 'bg-yellow-100 text-yellow-800',
+}
+
+const VIOLATION_LABELS: Record<string, string> = {
+  SPAM_FAKE: 'Spam / Fake',
+  OFFENSIVE: 'Offensive',
+  CONFLICT_OF_INTEREST: 'Conflict of Interest',
+  OFF_TOPIC: 'Off Topic',
+  RESTRICTED_CONTENT: 'Restricted Content',
+}
+
+const STATUS_FLOW = ['detected', 'submitted', 'under_review', 'removed'] as const
+
+const CONFIDENCE_STYLES = {
+  high: 'bg-green-100 text-green-700',
+  medium: 'bg-yellow-100 text-yellow-700',
+  low: 'bg-gray-100 text-gray-600',
+}
+
+interface DisputeCardProps {
+  dispute: ReviewDisputeWithReview
+  onUpdate: (updated: ReviewDisputeWithReview) => void
+}
+
+export function DisputeCard({ dispute, onUpdate }: DisputeCardProps) {
+  const [loading, setLoading] = useState<string | null>(null)
+  const [showDisputeText, setShowDisputeText] = useState(false)
+  const [showInstructions, setShowInstructions] = useState(false)
+
+  const review = dispute.reviews
+
+  async function handleStatusChange(status: string) {
+    setLoading(status)
+    try {
+      const res = await fetch(`/api/disputes/${dispute.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      const json = await res.json()
+      if (json.data) onUpdate(json.data)
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const currentStep = STATUS_FLOW.indexOf(dispute.status as typeof STATUS_FLOW[number])
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      {/* Review header */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-medium text-gray-600">
+              {(review?.reviewer_name ?? 'A')[0].toUpperCase()}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {review?.reviewer_name ?? 'Anonymous'}
+            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <StarRating rating={review?.star_rating ?? 1} size="sm" />
+              <span className="text-xs text-gray-400">
+                {formatRelativeDate(review?.review_date ?? null)}
+              </span>
+            </div>
+          </div>
+        </div>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${CONFIDENCE_STYLES[dispute.confidence]}`}>
+          {dispute.confidence} confidence
+        </span>
+      </div>
+
+      {/* Review text */}
+      {review?.review_text && (
+        <p className="text-sm text-gray-700 leading-relaxed mb-3">
+          {review.review_text}
+        </p>
+      )}
+
+      {/* Violation badges */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {(dispute.violations ?? []).map((v) => (
+          <span
+            key={v}
+            className={`px-2 py-0.5 rounded text-xs font-medium ${VIOLATION_COLORS[v] ?? 'bg-gray-100 text-gray-600'}`}
+          >
+            {VIOLATION_LABELS[v] ?? v}
+          </span>
+        ))}
+      </div>
+
+      {/* AI reasoning */}
+      <p className="text-sm text-gray-500 italic mb-3">
+        {dispute.ai_analysis ?? dispute.reason}
+      </p>
+
+      {/* Status tracker */}
+      {dispute.status !== 'dismissed' && (
+        <div className="flex items-center gap-1 mb-4">
+          {STATUS_FLOW.map((step, i) => (
+            <div key={step} className="flex items-center gap-1">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  i <= currentStep ? 'bg-gray-900' : 'bg-gray-200'
+                }`}
+              />
+              {i < STATUS_FLOW.length - 1 && (
+                <div className={`w-6 h-0.5 ${i < currentStep ? 'bg-gray-900' : 'bg-gray-200'}`} />
+              )}
+            </div>
+          ))}
+          <span className="ml-2 text-xs text-gray-400 capitalize">
+            {dispute.status.replace('_', ' ')}
+          </span>
+        </div>
+      )}
+
+      {/* Expandable dispute text */}
+      {dispute.suggested_dispute_text && (
+        <div className="mb-3">
+          <button
+            onClick={() => setShowDisputeText(!showDisputeText)}
+            className="text-xs font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            {showDisputeText ? 'Hide' : 'Show'} suggested dispute text
+          </button>
+          {showDisputeText && (
+            <div className="mt-2 bg-gray-50 rounded-md p-3">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {dispute.suggested_dispute_text}
+              </p>
+              <button
+                onClick={() => navigator.clipboard.writeText(dispute.suggested_dispute_text ?? '')}
+                className="mt-2 text-xs text-gray-500 hover:text-gray-900"
+              >
+                Copy to clipboard
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2">
+        {dispute.status === 'detected' && (
+          <>
+            <Button
+              size="sm"
+              onClick={() => {
+                handleStatusChange('submitted')
+                setShowInstructions(true)
+              }}
+              disabled={loading !== null}
+            >
+              {loading === 'submitted' ? 'Filing...' : 'File Dispute'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleStatusChange('dismissed')}
+              disabled={loading !== null}
+            >
+              Dismiss
+            </Button>
+          </>
+        )}
+        {dispute.status === 'submitted' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => handleStatusChange('under_review')}
+            disabled={loading !== null}
+          >
+            Mark as Under Review
+          </Button>
+        )}
+        {dispute.status === 'under_review' && (
+          <>
+            <Button
+              size="sm"
+              onClick={() => handleStatusChange('removed')}
+              disabled={loading !== null}
+            >
+              Removed
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleStatusChange('denied')}
+              disabled={loading !== null}
+            >
+              Denied
+            </Button>
+          </>
+        )}
+        {dispute.status === 'dismissed' && (
+          <span className="text-xs text-gray-400">Dismissed</span>
+        )}
+        {(dispute.status === 'removed' || dispute.status === 'denied') && (
+          <span className="text-xs text-gray-400 capitalize">
+            {dispute.status} {dispute.resolved_at ? `Â· ${formatRelativeDate(dispute.resolved_at)}` : ''}
+          </span>
+        )}
+      </div>
+
+      {/* Filing instructions modal */}
+      {showInstructions && dispute.status === 'submitted' && (
+        <div className="mt-4 bg-blue-50 rounded-md p-4 border border-blue-100">
+          <h4 className="text-sm font-semibold text-blue-900 mb-2">
+            How to report this review to Google
+          </h4>
+          <ol className="text-sm text-blue-800 space-y-1.5 list-decimal list-inside">
+            <li>Open Google Maps and find your business listing</li>
+            <li>Find the review from {review?.reviewer_name ?? 'this reviewer'}</li>
+            <li>Click the three-dot menu and select &ldquo;Report review&rdquo;</li>
+            <li>Select the appropriate violation type and paste the dispute text above</li>
+          </ol>
+          <button
+            onClick={() => setShowInstructions(false)}
+            className="mt-3 text-xs text-blue-600 hover:text-blue-800"
+          >
+            Got it, close
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\dashboard\recovery-card.tsx =====
+'use client'
+
+import { useState } from 'react'
+import type { RecoveryOutreachWithReview } from '@/lib/types/database'
+import { StarRating } from '@/components/dashboard/star-rating'
+import { Button } from '@/components/ui/button'
+import { formatRelativeDate } from '@/lib/utils/format'
+
+const STATUS_STYLES: Record<string, string> = {
+  draft: 'bg-yellow-100 text-yellow-800',
+  sent: 'bg-blue-100 text-blue-800',
+  responded: 'bg-purple-100 text-purple-700',
+  resolved: 'bg-green-100 text-green-800',
+  dismissed: 'bg-gray-100 text-gray-600',
+}
+
+const TIMELINE_STEPS = ['draft', 'sent', 'responded', 'resolved'] as const
+
+interface RecoveryCardProps {
+  outreach: RecoveryOutreachWithReview
+  onUpdate: (updated: RecoveryOutreachWithReview) => void
+}
+
+export function RecoveryCard({ outreach, onUpdate }: RecoveryCardProps) {
+  const [loading, setLoading] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editedMessage, setEditedMessage] = useState(outreach.message_draft ?? '')
+  const [notes, setNotes] = useState(outreach.notes ?? '')
+  const [copied, setCopied] = useState(false)
+
+  const review = outreach.reviews
+
+  async function handleStatusChange(status: string, extraData?: Record<string, unknown>) {
+    setLoading(status)
+    try {
+      const res = await fetch(`/api/recovery/${outreach.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, ...extraData }),
+      })
+      const json = await res.json()
+      if (json.data) {
+        onUpdate(json.data)
+        setEditing(false)
+      }
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleSaveEdit() {
+    setLoading('save')
+    try {
+      const res = await fetch(`/api/recovery/${outreach.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_draft: editedMessage }),
+      })
+      const json = await res.json()
+      if (json.data) {
+        onUpdate(json.data)
+        setEditing(false)
+      }
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(outreach.message_draft ?? '')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const currentStep = TIMELINE_STEPS.indexOf(outreach.status as typeof TIMELINE_STEPS[number])
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      {/* Review header */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-medium text-gray-600">
+              {(review?.reviewer_name ?? 'A')[0].toUpperCase()}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {review?.reviewer_name ?? 'Anonymous'}
+            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <StarRating rating={review?.star_rating ?? 1} size="sm" />
+              <span className="text-xs text-gray-400">
+                {formatRelativeDate(review?.review_date ?? null)}
+              </span>
+            </div>
+          </div>
+        </div>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[outreach.status] ?? 'bg-gray-100 text-gray-600'}`}>
+          {outreach.status}
+        </span>
+      </div>
+
+      {/* Review text */}
+      {review?.review_text && (
+        <p className="text-sm text-gray-700 leading-relaxed mb-3">
+          {review.review_text}
+        </p>
+      )}
+
+      {/* Public response if exists */}
+      {review?.ai_response && (
+        <div className="bg-gray-50 rounded-md p-3 mb-3">
+          <p className="text-xs font-medium text-gray-400 mb-1">Public response</p>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            {review.edited_response ?? review.ai_response}
+          </p>
+        </div>
+      )}
+
+      {/* Timeline */}
+      {outreach.status !== 'dismissed' && (
+        <div className="flex items-center gap-1 mb-4">
+          {TIMELINE_STEPS.map((step, i) => (
+            <div key={step} className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full ${i <= currentStep ? 'bg-gray-900' : 'bg-gray-200'}`} />
+              {i < TIMELINE_STEPS.length - 1 && (
+                <div className={`w-6 h-0.5 ${i < currentStep ? 'bg-gray-900' : 'bg-gray-200'}`} />
+              )}
+            </div>
+          ))}
+          <span className="ml-2 text-xs text-gray-400 capitalize">{outreach.status}</span>
+        </div>
+      )}
+
+      {/* Recovery message */}
+      {outreach.message_draft && !editing && (
+        <div className="bg-blue-50 rounded-md p-3 mb-3 border border-blue-100">
+          <p className="text-xs font-medium text-blue-400 mb-1">Recovery message</p>
+          <p className="text-sm text-blue-900 leading-relaxed whitespace-pre-wrap">
+            {outreach.message_draft}
+          </p>
+          {outreach.suggested_resolution && (
+            <p className="mt-2 text-xs text-blue-600">
+              Resolution: {outreach.suggested_resolution}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Editing */}
+      {editing && (
+        <div className="mb-3">
+          <textarea
+            value={editedMessage}
+            onChange={(e) => setEditedMessage(e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-y"
+          />
+        </div>
+      )}
+
+      {/* Resolution notes */}
+      {outreach.status === 'resolved' && outreach.notes && (
+        <div className="bg-green-50 rounded-md p-3 mb-3">
+          <p className="text-xs font-medium text-green-600 mb-1">Resolution notes</p>
+          <p className="text-sm text-green-800">{outreach.notes}</p>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2">
+        {outreach.status === 'draft' && !editing && (
+          <>
+            <Button size="sm" variant="secondary" onClick={handleCopy}>
+              {copied ? 'Copied!' : 'Copy Message'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setEditedMessage(outreach.message_draft ?? '')
+                setEditing(true)
+              }}
+            >
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleStatusChange('sent')}
+              disabled={loading !== null}
+            >
+              {loading === 'sent' ? 'Updating...' : 'Mark as Sent'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleStatusChange('dismissed')}
+              disabled={loading !== null}
+            >
+              Dismiss
+            </Button>
+          </>
+        )}
+
+        {outreach.status === 'draft' && editing && (
+          <>
+            <Button size="sm" onClick={handleSaveEdit} disabled={loading !== null}>
+              {loading === 'save' ? 'Saving...' : 'Save'}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </>
+        )}
+
+        {outreach.status === 'sent' && (
+          <>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleStatusChange('responded')}
+              disabled={loading !== null}
+            >
+              Customer Responded
+            </Button>
+          </>
+        )}
+
+        {outreach.status === 'responded' && (
+          <div className="w-full space-y-2">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Resolution notes (optional)..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-y"
+            />
+            <Button
+              size="sm"
+              onClick={() => handleStatusChange('resolved', { notes })}
+              disabled={loading !== null}
+            >
+              {loading === 'resolved' ? 'Resolving...' : 'Mark as Resolved'}
+            </Button>
+          </div>
+        )}
+
+        {outreach.status === 'dismissed' && (
+          <span className="text-xs text-gray-400">Dismissed</span>
+        )}
+      </div>
+    </div>
   )
 }
 ===== C:\Users\mikeg\replyengine\components\dashboard\review-card.tsx =====
@@ -1279,6 +3755,7 @@ export function ReviewCard({ review, onUpdate }: ReviewCardProps) {
 
 import { useCallback, useEffect, useState } from 'react'
 import type { Review } from '@/lib/types/database'
+import { getSelectedBusinessId } from '@/lib/utils/selected-business'
 import { ReviewCard } from '@/components/dashboard/review-card'
 import { Button } from '@/components/ui/button'
 
@@ -1315,6 +3792,8 @@ export function ReviewsList() {
     const params = new URLSearchParams({ page: String(page), per_page: String(perPage) })
     if (statusFilter) params.set('status', statusFilter)
     if (ratingFilter) params.set('star_rating', ratingFilter)
+    const bizId = getSelectedBusinessId()
+    if (bizId) params.set('business_id', bizId)
 
     try {
       const res = await fetch(`/api/reviews?${params}`)
@@ -1505,6 +3984,405 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     </span>
   )
 }
+===== C:\Users\mikeg\replyengine\components\marketing\free-generator-form.tsx =====
+'use client'
+
+import { useState } from 'react'
+
+const BUSINESS_TYPES = [
+  'Restaurant',
+  'Dental / Medical',
+  'Salon / Spa',
+  'Home Services',
+  'Automotive',
+  'Hotel / Lodging',
+  'Retail',
+  'Legal / Professional',
+  'Other',
+]
+
+const TONES = [
+  { value: 'professional', label: 'Professional' },
+  { value: 'friendly', label: 'Friendly' },
+  { value: 'casual', label: 'Casual' },
+  { value: 'formal', label: 'Formal' },
+] as const
+
+export function FreeGeneratorForm() {
+  const [businessType, setBusinessType] = useState('')
+  const [businessName, setBusinessName] = useState('')
+  const [tone, setTone] = useState('friendly')
+  const [starRating, setStarRating] = useState(5)
+  const [reviewText, setReviewText] = useState('')
+  const [reviewerName, setReviewerName] = useState('')
+
+  const [response, setResponse] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  async function handleGenerate() {
+    if (!businessType) {
+      setError('Please select a business type.')
+      return
+    }
+    if (!reviewText || reviewText.trim().length < 5) {
+      setError('Please paste a review (at least 5 characters).')
+      return
+    }
+
+    setError(null)
+    setLoading(true)
+    setResponse(null)
+
+    try {
+      const res = await fetch('/api/free-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_type: businessType,
+          business_name: businessName || undefined,
+          tone,
+          star_rating: starRating,
+          review_text: reviewText.trim(),
+          reviewer_name: reviewerName || undefined,
+        }),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        setError(json.error ?? 'Something went wrong. Please try again.')
+        return
+      }
+
+      setResponse(json.data.response)
+    } catch {
+      setError('Failed to generate response. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCopy() {
+    if (!response) return
+    await navigator.clipboard.writeText(response)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div>
+      <div className="bg-white rounded-xl border border-gray-200 p-5 sm:p-8 space-y-5">
+        {/* Business type */}
+        <div>
+          <label htmlFor="ft-type" className="block text-sm font-medium text-gray-700 mb-1">
+            Business type
+          </label>
+          <select
+            id="ft-type"
+            value={businessType}
+            onChange={(e) => setBusinessType(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          >
+            <option value="">Select your business type</option>
+            {BUSINESS_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Business name */}
+        <div>
+          <label htmlFor="ft-name" className="block text-sm font-medium text-gray-700 mb-1">
+            Business name <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            id="ft-name"
+            type="text"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+            placeholder="e.g. Mike's Kitchen & Grill"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          />
+        </div>
+
+        {/* Tone */}
+        <div>
+          <p className="block text-sm font-medium text-gray-700 mb-2">Response tone</p>
+          <div className="flex flex-wrap gap-2">
+            {TONES.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setTone(t.value)}
+                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
+                  tone === t.value
+                    ? 'border-gray-900 bg-gray-900 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Star rating */}
+        <div>
+          <p className="block text-sm font-medium text-gray-700 mb-2">
+            Review star rating
+          </p>
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => setStarRating(star)}
+                className="p-0.5 focus:outline-none"
+              >
+                <svg
+                  className={`w-8 h-8 sm:w-7 sm:h-7 transition-colors ${
+                    star <= starRating ? 'text-yellow-400' : 'text-gray-200'
+                  }`}
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              </button>
+            ))}
+            <span className="ml-2 text-sm text-gray-400">{starRating}/5</span>
+          </div>
+        </div>
+
+        {/* Reviewer name */}
+        <div>
+          <label htmlFor="ft-reviewer" className="block text-sm font-medium text-gray-700 mb-1">
+            Reviewer name <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            id="ft-reviewer"
+            type="text"
+            value={reviewerName}
+            onChange={(e) => setReviewerName(e.target.value)}
+            placeholder="e.g. Sarah M."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          />
+        </div>
+
+        {/* Review text */}
+        <div>
+          <label htmlFor="ft-review" className="block text-sm font-medium text-gray-700 mb-1">
+            Paste the review
+          </label>
+          <textarea
+            id="ft-review"
+            value={reviewText}
+            onChange={(e) => setReviewText(e.target.value)}
+            rows={5}
+            placeholder="Paste the customer's Google review here..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-y"
+          />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md">
+            {error}
+          </div>
+        )}
+
+        {/* Generate button */}
+        <button
+          onClick={handleGenerate}
+          disabled={loading}
+          className="w-full bg-gray-900 text-white py-3 px-4 rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {loading ? 'Generating response...' : 'Generate Response'}
+        </button>
+      </div>
+
+      {/* Result */}
+      {response && (
+        <div className="mt-6 bg-white rounded-xl border border-gray-200 p-5 sm:p-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-900">Your Response</h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setResponse(null)
+                  handleGenerate()
+                }}
+                disabled={loading}
+                className="text-sm text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-50"
+              >
+                Regenerate
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 sm:p-5">
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+              {response}
+            </p>
+          </div>
+
+          <button
+            onClick={handleCopy}
+            className="mt-4 w-full sm:w-auto bg-gray-900 text-white py-3 sm:py-2 px-6 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors"
+          >
+            {copied ? 'Copied!' : 'Copy to Clipboard'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+===== C:\Users\mikeg\replyengine\components\marketing\pricing-toggle.tsx =====
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+
+const PLANS = [
+  {
+    name: 'Free',
+    monthlyPrice: 0,
+    annualPrice: 0,
+    description: 'Try it out',
+    features: [
+      '5 AI responses per month',
+      'Copy-paste responses',
+      'Basic tone settings',
+    ],
+    cta: 'Get Started',
+    href: '/signup',
+    highlighted: false,
+  },
+  {
+    name: 'Starter',
+    monthlyPrice: 19,
+    annualPrice: 15.83,
+    description: 'For growing businesses',
+    features: [
+      '30 AI responses per month',
+      'One-tap posting to Google',
+      'Dispute detection alerts',
+      'Custom response tone',
+      'Email notifications',
+    ],
+    cta: 'Start Free Trial',
+    href: '/signup',
+    highlighted: true,
+  },
+  {
+    name: 'Pro',
+    monthlyPrice: 39,
+    annualPrice: 32.50,
+    description: 'For serious reputation management',
+    features: [
+      'Unlimited AI responses',
+      'Auto-post responses',
+      'Recovery outreach (email + SMS)',
+      'Dispute filing assistance',
+      'Analytics dashboard',
+      'Social content generation',
+      'Priority support',
+    ],
+    cta: 'Start Free Trial',
+    href: '/signup',
+    highlighted: false,
+  },
+]
+
+export function PricingToggle() {
+  const [annual, setAnnual] = useState(false)
+
+  return (
+    <div>
+      {/* Toggle */}
+      <div className="flex items-center justify-center gap-3 mb-10">
+        <span className={`text-sm ${!annual ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+          Monthly
+        </span>
+        <button
+          onClick={() => setAnnual(!annual)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            annual ? 'bg-gray-900' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              annual ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+        <span className={`text-sm ${annual ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+          Annual
+        </span>
+        {annual && (
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+            2 months free
+          </span>
+        )}
+      </div>
+
+      {/* Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        {PLANS.map((plan) => {
+          const price = annual ? plan.annualPrice : plan.monthlyPrice
+          return (
+            <div
+              key={plan.name}
+              className={`rounded-xl p-6 ${
+                plan.highlighted
+                  ? 'border-2 border-gray-900 bg-white shadow-lg relative'
+                  : 'border border-gray-200 bg-white'
+              }`}
+            >
+              {plan.highlighted && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded-full font-medium">
+                  Most Popular
+                </span>
+              )}
+              <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
+              <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
+              <div className="mt-4">
+                <span className="text-3xl font-bold text-gray-900">
+                  ${price === 0 ? '0' : Math.floor(price)}
+                </span>
+                {price > 0 && (
+                  <span className="text-gray-500 text-sm">/mo</span>
+                )}
+              </div>
+              <ul className="mt-6 space-y-2.5">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm text-gray-600">
+                    <svg className="w-4 h-4 text-gray-900 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href={plan.href}
+                className={`mt-6 block text-center py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${
+                  plan.highlighted
+                    ? 'bg-gray-900 text-white hover:bg-gray-800'
+                    : 'bg-white text-gray-900 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {plan.cta}
+              </Link>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 ===== C:\Users\mikeg\replyengine\components\ui\button.tsx =====
 import { forwardRef } from 'react'
 
@@ -1545,6 +4423,182 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 )
 
 Button.displayName = 'Button'
+===== C:\Users\mikeg\replyengine\lib\ai\analyze-dispute.ts =====
+import Anthropic from '@anthropic-ai/sdk'
+import type { Review } from '@/lib/types/database'
+
+export interface DisputeAnalysis {
+  isDisputable: boolean
+  confidence: 'high' | 'medium' | 'low'
+  violations: string[]
+  reasoning: string
+  suggestedDisputeText: string
+}
+
+const VIOLATION_TYPES = [
+  'SPAM_FAKE',
+  'OFFENSIVE',
+  'CONFLICT_OF_INTEREST',
+  'OFF_TOPIC',
+  'RESTRICTED_CONTENT',
+] as const
+
+export async function analyzeForDispute(review: Review): Promise<DisputeAnalysis> {
+  const client = new Anthropic()
+
+  const systemPrompt = `You are an expert at analyzing Google reviews for policy violations. You help business owners identify reviews that may be removable under Google's review policies.
+
+Analyze the review and determine if it violates any of these Google review policies:
+
+1. SPAM_FAKE: Vague text with no specific details about an actual visit, very short reviews with no substance, reviews that appear auto-generated or copied.
+2. OFFENSIVE: Contains profanity, hate speech, threats, slurs, or personal attacks on named employees.
+3. CONFLICT_OF_INTEREST: Appears to be from a competitor, ex-employee, or someone with a personal/business dispute unrelated to the customer experience.
+4. OFF_TOPIC: Discusses unrelated topics, politics, personal grievances not about the business experience.
+5. RESTRICTED_CONTENT: Contains personal information like phone numbers, addresses, or makes specific legal accusations.
+
+Be conservative â€” only flag reviews you are genuinely confident violate a policy. A bad review is NOT the same as a fake review. Legitimate negative experiences should not be flagged.`
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: `Analyze this review for potential Google policy violations:
+
+Reviewer: ${review.reviewer_name ?? 'Anonymous'}
+Rating: ${review.star_rating}/5 stars
+Review text: "${review.review_text ?? '(No text)'}"
+
+Respond with a JSON object (no markdown, no code fences):
+{
+  "isDisputable": boolean,
+  "confidence": "high" | "medium" | "low",
+  "violations": ["SPAM_FAKE" | "OFFENSIVE" | "CONFLICT_OF_INTEREST" | "OFF_TOPIC" | "RESTRICTED_CONTENT"],
+  "reasoning": "1-2 sentence explanation",
+  "suggestedDisputeText": "The text to submit to Google when filing the dispute. Reference the specific policy and explain why the review violates it. Leave empty string if not disputable."
+}`,
+      },
+    ],
+  })
+
+  const rawText = message.content[0].type === 'text' ? message.content[0].text : ''
+
+  try {
+    // Strip any markdown fences if present
+    const cleaned = rawText.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim()
+    const parsed = JSON.parse(cleaned) as {
+      isDisputable?: boolean
+      confidence?: string
+      violations?: string[]
+      reasoning?: string
+      suggestedDisputeText?: string
+    }
+
+    const confidence =
+      parsed.confidence === 'high' || parsed.confidence === 'medium' || parsed.confidence === 'low'
+        ? parsed.confidence
+        : 'low'
+
+    const violations = Array.isArray(parsed.violations)
+      ? parsed.violations.filter((v): v is string =>
+          typeof v === 'string' && VIOLATION_TYPES.includes(v as typeof VIOLATION_TYPES[number])
+        )
+      : []
+
+    return {
+      isDisputable: parsed.isDisputable === true && violations.length > 0,
+      confidence,
+      violations,
+      reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : '',
+      suggestedDisputeText: typeof parsed.suggestedDisputeText === 'string' ? parsed.suggestedDisputeText : '',
+    }
+  } catch {
+    return {
+      isDisputable: false,
+      confidence: 'low',
+      violations: [],
+      reasoning: 'Unable to analyze review.',
+      suggestedDisputeText: '',
+    }
+  }
+}
+===== C:\Users\mikeg\replyengine\lib\ai\generate-recovery.ts =====
+import Anthropic from '@anthropic-ai/sdk'
+import type { Business, Review } from '@/lib/types/database'
+
+export interface RecoveryResult {
+  message: string
+  suggestedResolution: string
+}
+
+export async function generateRecoveryOutreach(
+  review: Review,
+  business: Business
+): Promise<RecoveryResult> {
+  const client = new Anthropic()
+
+  const ownerFirstName = business.name.split(/['']s?\s/)[0] ?? 'The Owner'
+
+  const systemPrompt = `You are helping a business owner write a private recovery message to an unhappy customer who left a negative Google review.
+
+Business: "${business.name}" (${business.business_type ?? 'local business'})
+
+Follow this framework:
+Phase 1 â€” Acknowledge: Reference the specific issue from their review. Express genuine empathy. Take responsibility where appropriate.
+Phase 2 â€” Resolve: Offer a specific resolution based on the complaint type. This could be an invitation to return, offer to redo the service, provide direct contact info, or another appropriate remedy.
+
+CRITICAL RULES:
+- NEVER ask the customer to delete, edit, or change their review â€” this violates Google's policies
+- NEVER offer compensation in exchange for changing the review
+- Be genuine and specific, not generic
+- Keep it concise â€” 3-5 sentences max
+- Sign with the owner's first name: "${ownerFirstName}"
+- The tone should be ${business.tone} but always empathetic for recovery messages
+
+Respond with a JSON object (no markdown, no code fences):
+{
+  "message": "the private recovery message",
+  "suggestedResolution": "a brief description of the resolution being offered, e.g. 'Complimentary appetizer on next visit' or 'Free redo of service'"
+}`
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 512,
+    system: systemPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: `Write a private recovery message for this negative review:
+
+Reviewer: ${review.reviewer_name ?? 'Customer'}
+Rating: ${review.star_rating}/5 stars
+Review: "${review.review_text ?? '(No text)'}"`,
+      },
+    ],
+  })
+
+  const rawText = message.content[0].type === 'text' ? message.content[0].text : ''
+
+  try {
+    const cleaned = rawText.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim()
+    const parsed = JSON.parse(cleaned) as {
+      message?: string
+      suggestedResolution?: string
+    }
+
+    return {
+      message: typeof parsed.message === 'string' ? parsed.message : rawText.trim(),
+      suggestedResolution: typeof parsed.suggestedResolution === 'string' ? parsed.suggestedResolution : '',
+    }
+  } catch {
+    return {
+      message: rawText.trim(),
+      suggestedResolution: '',
+    }
+  }
+}
 ===== C:\Users\mikeg\replyengine\lib\ai\generate-response.ts =====
 import Anthropic from '@anthropic-ai/sdk'
 import type { Business, Review, ResponsePattern } from '@/lib/types/database'
@@ -1698,6 +4752,79 @@ function parseResponse(raw: string): GenerateResponseResult {
 
   return { response, sentiment, keyTopics }
 }
+===== C:\Users\mikeg\replyengine\lib\stripe\client.ts =====
+import Stripe from 'stripe'
+
+let _stripe: Stripe | null = null
+
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2026-02-25.clover',
+      typescript: true,
+    })
+  }
+  return _stripe
+}
+===== C:\Users\mikeg\replyengine\lib\stripe\plans.ts =====
+export const PLANS = {
+  free: {
+    name: 'Free',
+    price: 0,
+    responsesPerMonth: 5,
+    features: [
+      '5 AI responses per month',
+      'Copy-paste responses',
+      'Basic tone settings',
+    ],
+    shield: false,
+    recover: false,
+  },
+  starter: {
+    name: 'Starter',
+    price: 19,
+    responsesPerMonth: 30,
+    features: [
+      '30 AI responses per month',
+      'One-tap posting to Google',
+      'Dispute detection alerts',
+      'Custom response tone',
+      'Email notifications',
+    ],
+    shield: 'alerts', // alerts only, no filing
+    recover: false,
+  },
+  pro: {
+    name: 'Pro',
+    price: 39,
+    responsesPerMonth: Infinity,
+    features: [
+      'Unlimited AI responses',
+      'Auto-post responses',
+      'Full dispute filing assistance',
+      'Recovery outreach (email + SMS)',
+      'Analytics dashboard',
+      'Priority support',
+    ],
+    shield: true,
+    recover: true,
+  },
+} as const
+
+export type PlanId = keyof typeof PLANS
+
+export function getPriceId(plan: 'starter' | 'pro'): string {
+  if (plan === 'starter') {
+    return process.env.STRIPE_STARTER_PRICE_ID ?? ''
+  }
+  return process.env.STRIPE_PRO_PRICE_ID ?? ''
+}
+
+export function planFromPriceId(priceId: string): PlanId {
+  if (priceId === process.env.STRIPE_STARTER_PRICE_ID) return 'starter'
+  if (priceId === process.env.STRIPE_PRO_PRICE_ID) return 'pro'
+  return 'free'
+}
 ===== C:\Users\mikeg\replyengine\lib\supabase\client.ts =====
 import { createBrowserClient } from '@supabase/ssr'
 
@@ -1718,9 +4845,16 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return response
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -1867,7 +5001,7 @@ export interface Business {
   notification_email: boolean
   notification_sms: boolean
   phone: string | null
-  plan: 'free' | 'pro' | 'enterprise'
+  plan: 'free' | 'starter' | 'pro'
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
   monthly_response_count: number
@@ -1930,6 +5064,7 @@ export interface RecoveryOutreach {
   sent_at: string | null
   resolved_at: string | null
   notes: string | null
+  suggested_resolution: string | null
   created_at: string
   updated_at: string
 }
@@ -1941,12 +5076,23 @@ export interface ReviewDispute {
   reason: string
   ai_confidence_score: number | null
   ai_analysis: string | null
-  status: 'detected' | 'flagged' | 'submitted' | 'resolved' | 'dismissed'
+  violations: string[]
+  suggested_dispute_text: string | null
+  confidence: 'high' | 'medium' | 'low'
+  status: 'detected' | 'flagged' | 'submitted' | 'under_review' | 'removed' | 'denied' | 'dismissed'
   google_case_id: string | null
   submitted_at: string | null
   resolved_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface RecoveryOutreachWithReview extends RecoveryOutreach {
+  reviews: Review
+}
+
+export interface ReviewDisputeWithReview extends ReviewDispute {
+  reviews: Review
 }
 
 export interface DashboardStats {
@@ -1997,9 +5143,9 @@ export function truncateText(text: string, maxLength: number): string {
 import type { Business } from '@/lib/types/database'
 
 export const PLAN_LIMITS = {
-  free: { responsesPerMonth: 10 },
-  pro: { responsesPerMonth: 100 },
-  enterprise: { responsesPerMonth: Infinity },
+  free: { responsesPerMonth: 5 },
+  starter: { responsesPerMonth: 30 },
+  pro: { responsesPerMonth: Infinity },
 } as const
 
 export function canGenerateResponse(business: Business): boolean {
@@ -2020,6 +5166,596 @@ export function getRemainingResponses(business: Business): number {
   if (limit === Infinity) return Infinity
   return Math.max(0, limit - business.monthly_response_count)
 }
+===== C:\Users\mikeg\replyengine\lib\utils\resolve-business.ts =====
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+/**
+ * Resolve which business to use. If business_id is provided and the user owns it,
+ * use that. Otherwise fall back to the user's first business.
+ */
+export async function resolveBusinessId(
+  supabase: SupabaseClient,
+  userId: string,
+  requestedBusinessId?: string | null
+): Promise<string | null> {
+  if (requestedBusinessId) {
+    const { data } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('id', requestedBusinessId)
+      .eq('owner_id', userId)
+      .limit(1)
+
+    if (data && data.length > 0) {
+      return data[0].id
+    }
+  }
+
+  // Fall back to first business
+  const { data: businesses } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+
+  return businesses?.[0]?.id ?? null
+}
+===== C:\Users\mikeg\replyengine\lib\utils\selected-business.ts =====
+const STORAGE_KEY = 'replyengine_selected_business_id'
+
+export function getSelectedBusinessId(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(STORAGE_KEY)
+}
+
+export function setSelectedBusinessId(id: string): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(STORAGE_KEY, id)
+}
+
+export function buildApiUrl(path: string, params?: Record<string, string>): string {
+  const businessId = getSelectedBusinessId()
+  const searchParams = new URLSearchParams(params)
+  if (businessId) {
+    searchParams.set('business_id', businessId)
+  }
+  const qs = searchParams.toString()
+  return qs ? `${path}?${qs}` : path
+}
+===== C:\Users\mikeg\replyengine\scripts\fetch-google-reviews.ts =====
+import { config } from 'dotenv'
+import { createClient } from '@supabase/supabase-js'
+
+config({ path: '.env.local' })
+
+// ============================================
+// EDIT THESE â€” add or remove businesses to fetch
+// ============================================
+const BUSINESSES_TO_FETCH = [
+  "Wildflower Cafe Evergreen Colorado",
+]
+
+// Only insert reviews at or below this star rating (set to 5 for all reviews)
+const MAX_STAR_RATING = 5
+// ============================================
+
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+interface GoogleReview {
+  authorAttribution?: { displayName?: string; photoUri?: string }
+  rating?: number
+  text?: { text?: string }
+  relativePublishTimeDescription?: string
+  publishTime?: string
+}
+
+interface PlaceResult {
+  id: string
+  displayName?: { text?: string }
+  formattedAddress?: string
+  rating?: number
+  reviews?: GoogleReview[]
+}
+
+interface FetchedBusiness {
+  name: string
+  address: string
+  rating: number
+  placeId: string
+  reviews: GoogleReview[]
+  dbBusinessId?: string
+}
+
+async function searchPlace(query: string): Promise<PlaceResult | null> {
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': GOOGLE_API_KEY,
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating',
+    },
+    body: JSON.stringify({ textQuery: query }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    console.error(`  Search failed for "${query}": ${res.status} ${err}`)
+    return null
+  }
+
+  const data = await res.json()
+  const place = data.places?.[0]
+  if (!place) {
+    console.error(`  No results for "${query}"`)
+    return null
+  }
+
+  return place
+}
+
+async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
+  const res = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+    headers: {
+      'X-Goog-Api-Key': GOOGLE_API_KEY,
+      'X-Goog-FieldMask': 'id,displayName,formattedAddress,rating,reviews',
+    },
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    console.error(`  Details failed for ${placeId}: ${res.status} ${err}`)
+    return null
+  }
+
+  return await res.json()
+}
+
+async function fetchAllBusinesses(): Promise<FetchedBusiness[]> {
+  const results: FetchedBusiness[] = []
+
+  for (const query of BUSINESSES_TO_FETCH) {
+    console.log(`\nSearching: "${query}"...`)
+
+    const searchResult = await searchPlace(query)
+    if (!searchResult) continue
+
+    const placeId = searchResult.id
+    const name = searchResult.displayName?.text ?? query
+    console.log(`  Found: ${name} (${placeId})`)
+
+    const details = await getPlaceDetails(placeId)
+    if (!details) continue
+
+    const business: FetchedBusiness = {
+      name: details.displayName?.text ?? name,
+      address: details.formattedAddress ?? '',
+      rating: details.rating ?? 0,
+      placeId,
+      reviews: details.reviews ?? [],
+    }
+
+    console.log(`  Address: ${business.address}`)
+    console.log(`  Rating: ${business.rating}/5`)
+    console.log(`  Reviews: ${business.reviews.length}`)
+
+    results.push(business)
+  }
+
+  return results
+}
+
+async function insertIntoDatabase(businesses: FetchedBusiness[]) {
+  // Get the first user as owner
+  const { data: users } = await supabase.auth.admin.listUsers()
+  if (!users?.users.length) {
+    console.error('\nNo users found. Sign up first.')
+    return
+  }
+  const ownerId = users.users[0].id
+
+  for (const biz of businesses) {
+    console.log(`\n--- Inserting: ${biz.name} ---`)
+
+    // Check if business already exists by google_place_id
+    const { data: existing } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('google_place_id', biz.placeId)
+      .limit(1)
+
+    let businessId: string
+
+    if (existing && existing.length > 0) {
+      businessId = existing[0].id
+      console.log(`  Business exists (${businessId})`)
+    } else {
+      const { data: created, error } = await supabase
+        .from('businesses')
+        .insert({
+          owner_id: ownerId,
+          name: biz.name,
+          google_place_id: biz.placeId,
+          business_type: 'Other',
+          tone: 'friendly',
+          response_length: 'medium',
+          plan: 'pro', // pro so AI generation works without limits
+        })
+        .select()
+        .single()
+
+      if (error || !created) {
+        console.error(`  Failed to create business: ${error?.message}`)
+        continue
+      }
+      businessId = created.id
+      console.log(`  Created business (${businessId})`)
+    }
+
+    biz.dbBusinessId = businessId
+
+    // Insert reviews (filtered by MAX_STAR_RATING)
+    const filteredReviews = biz.reviews.filter((r) => (r.rating ?? 3) <= MAX_STAR_RATING)
+    console.log(`  ${filteredReviews.length} of ${biz.reviews.length} reviews are ${MAX_STAR_RATING}â˜… or below`)
+
+    for (const review of filteredReviews) {
+      const reviewerName = review.authorAttribution?.displayName ?? 'Anonymous'
+      const starRating = review.rating ?? 3
+      const reviewText = review.text?.text ?? ''
+      const publishTime = review.publishTime ?? new Date().toISOString()
+
+      // Check for duplicate by reviewer name + business
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('business_id', businessId)
+        .eq('reviewer_name', reviewerName)
+        .eq('review_text', reviewText)
+        .limit(1)
+
+      if (existingReview && existingReview.length > 0) {
+        console.log(`  Skipping duplicate: ${reviewerName}`)
+        continue
+      }
+
+      const { data: inserted, error: reviewError } = await supabase
+        .from('reviews')
+        .insert({
+          business_id: businessId,
+          reviewer_name: reviewerName,
+          reviewer_photo_url: review.authorAttribution?.photoUri ?? null,
+          star_rating: starRating,
+          review_text: reviewText || null,
+          review_date: publishTime,
+          response_status: 'pending',
+        })
+        .select()
+        .single()
+
+      if (reviewError || !inserted) {
+        console.error(`  Failed to insert review from ${reviewerName}: ${reviewError?.message}`)
+        continue
+      }
+
+      console.log(`  Inserted review: ${reviewerName} (${starRating}â˜…)`)
+    }
+  }
+}
+
+async function generateResponses(businesses: FetchedBusiness[]) {
+  const { generateReviewResponse } = await import('../lib/ai/generate-response')
+  const { analyzeForDispute } = await import('../lib/ai/analyze-dispute')
+
+  for (const biz of businesses) {
+    if (!biz.dbBusinessId) continue
+
+    console.log(`\n=== Generating responses for: ${biz.name} ===`)
+
+    // Fetch the full business record
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', biz.dbBusinessId)
+      .single()
+
+    if (!business) continue
+
+    // Fetch all pending reviews for this business
+    const { data: reviews } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('business_id', biz.dbBusinessId)
+      .eq('response_status', 'pending')
+
+    if (!reviews || reviews.length === 0) {
+      console.log('  No pending reviews to process.')
+      continue
+    }
+
+    for (const review of reviews) {
+      console.log(`\n  ${review.reviewer_name} (${review.star_rating}â˜…):`)
+      console.log(`  "${(review.review_text ?? '').slice(0, 100)}${(review.review_text?.length ?? 0) > 100 ? '...' : ''}"`)
+
+      // Generate AI response
+      try {
+        const result = await generateReviewResponse(review, business, [])
+
+        await supabase
+          .from('reviews')
+          .update({
+            ai_response: result.response,
+            response_status: 'draft',
+            sentiment: result.sentiment,
+            key_topics: result.keyTopics,
+          })
+          .eq('id', review.id)
+
+        console.log(`  AI Response: "${result.response.slice(0, 120)}..."`)
+        console.log(`  Sentiment: ${result.sentiment} | Topics: ${result.keyTopics.join(', ')}`)
+      } catch (err) {
+        console.error(`  Response generation failed: ${err instanceof Error ? err.message : err}`)
+      }
+
+      // Dispute analysis for 1-2 star reviews
+      if (review.star_rating <= 2) {
+        try {
+          const dispute = await analyzeForDispute(review)
+
+          if (dispute.isDisputable) {
+            await supabase.from('review_disputes').insert({
+              review_id: review.id,
+              business_id: biz.dbBusinessId,
+              reason: dispute.violations.join(', '),
+              ai_confidence_score: dispute.confidence === 'high' ? 0.9 : dispute.confidence === 'medium' ? 0.6 : 0.3,
+              ai_analysis: dispute.reasoning,
+              violations: dispute.violations,
+              suggested_dispute_text: dispute.suggestedDisputeText,
+              confidence: dispute.confidence,
+              status: 'detected',
+            })
+            console.log(`  DISPUTE FLAGGED: ${dispute.violations.join(', ')} (${dispute.confidence})`)
+            console.log(`  Reason: ${dispute.reasoning}`)
+          } else {
+            console.log(`  No dispute flags (legitimate review)`)
+          }
+        } catch (err) {
+          console.error(`  Dispute analysis failed: ${err instanceof Error ? err.message : err}`)
+        }
+      }
+    }
+  }
+}
+
+function printSummary(businesses: FetchedBusiness[]) {
+  console.log('\n\n' + '='.repeat(60))
+  console.log('SUMMARY')
+  console.log('='.repeat(60))
+
+  for (const biz of businesses) {
+    console.log(`\n${biz.name}`)
+    console.log(`  ${biz.address}`)
+    console.log(`  Overall rating: ${biz.rating}/5`)
+    console.log(`  Reviews fetched: ${biz.reviews.length}`)
+
+    for (const review of biz.reviews) {
+      const name = review.authorAttribution?.displayName ?? 'Anonymous'
+      const stars = review.rating ?? 0
+      const text = review.text?.text ?? '(no text)'
+      const time = review.relativePublishTimeDescription ?? ''
+      console.log(`\n    ${name} â€” ${stars}â˜… (${time})`)
+      console.log(`    "${text.slice(0, 150)}${text.length > 150 ? '...' : ''}"`)
+    }
+  }
+}
+
+async function main() {
+  if (!GOOGLE_API_KEY) {
+    console.error('GOOGLE_PLACES_API_KEY is not set in .env.local')
+    process.exit(1)
+  }
+
+  console.log('Fetching Google reviews...\n')
+
+  // Step 1: Fetch from Google
+  const businesses = await fetchAllBusinesses()
+
+  if (businesses.length === 0) {
+    console.log('\nNo businesses found.')
+    return
+  }
+
+  // Step 2: Insert into database
+  await insertIntoDatabase(businesses)
+
+  // Step 3: Generate AI responses + dispute analysis
+  await generateResponses(businesses)
+
+  // Step 4: Print summary
+  printSummary(businesses)
+
+  console.log('\n\nDone! Check /dashboard to see the results.')
+}
+
+main()
+===== C:\Users\mikeg\replyengine\scripts\seed-disputes.ts =====
+import { config } from 'dotenv'
+import { createClient } from '@supabase/supabase-js'
+
+config({ path: '.env.local' })
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+async function seedDisputes() {
+  console.log('Seeding dispute test reviews...\n')
+
+  // Find the existing business
+  const { data: businesses, error: bizError } = await supabase
+    .from('businesses')
+    .select('id, name')
+    .limit(1)
+
+  if (bizError || !businesses?.length) {
+    console.error('No business found. Run scripts/seed.ts first.')
+    process.exit(1)
+  }
+
+  const business = businesses[0]
+  console.log(`Using business: ${business.name} (${business.id})\n`)
+
+  const now = Date.now()
+  const day = 86400000
+
+  const testReviews = [
+    {
+      business_id: business.id,
+      reviewer_name: 'user39281',
+      star_rating: 1,
+      review_text: 'worst place ever dont go here terrible',
+      review_date: new Date(now - 1 * day).toISOString(),
+      response_status: 'pending',
+      _expected: 'SPAM_FAKE â€” should be flagged (high confidence)',
+    },
+    {
+      business_id: business.id,
+      reviewer_name: 'angry_customer',
+      star_rating: 1,
+      review_text:
+        "The idiot manager Jason is a complete moron who shouldn't be allowed near a restaurant. This place is a disgusting dump run by incompetent fools.",
+      review_date: new Date(now - 2 * day).toISOString(),
+      response_status: 'pending',
+      _expected: 'OFFENSIVE â€” should be flagged (high confidence)',
+    },
+    {
+      business_id: business.id,
+      reviewer_name: 'BestPizzaCO',
+      star_rating: 2,
+      review_text:
+        "Very mediocre pizza, nothing special. I know good pizza and this isn't it. Try Antonio's down the street instead, much better quality and value.",
+      review_date: new Date(now - 3 * day).toISOString(),
+      response_status: 'pending',
+      _expected: 'CONFLICT_OF_INTEREST â€” should be flagged (medium confidence)',
+    },
+    {
+      business_id: business.id,
+      reviewer_name: 'Maria S.',
+      star_rating: 2,
+      review_text:
+        'We waited 40 minutes for our food on a Tuesday when the restaurant was half empty. The pasta was cold when it arrived. Our server apologized but couldn\'t explain the delay. The food itself tasted fine once we got it but the experience was frustrating.',
+      review_date: new Date(now - 4 * day).toISOString(),
+      response_status: 'pending',
+      _expected: 'LEGITIMATE â€” should NOT be flagged',
+    },
+  ]
+
+  // Insert reviews
+  const reviewsToInsert = testReviews.map(({ _expected, ...review }) => review)
+  void testReviews.map((r) => r._expected) // keep lint happy
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('reviews')
+    .insert(reviewsToInsert)
+    .select()
+
+  if (insertError) {
+    console.error('Failed to insert reviews:', insertError.message)
+    process.exit(1)
+  }
+
+  console.log(`Inserted ${inserted.length} test reviews\n`)
+
+  // Get a valid session token to call the API routes
+  // Since we need auth, we'll call the AI functions directly instead
+  const { analyzeForDispute } = await import('../lib/ai/analyze-dispute')
+  const { generateReviewResponse } = await import('../lib/ai/generate-response')
+
+  // Fetch the full business record for response generation
+  const { data: fullBusiness } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('id', business.id)
+    .single()
+
+  for (let i = 0; i < inserted.length; i++) {
+    const review = inserted[i]
+    const expected = testReviews[i]._expected
+
+    console.log(`--- Review ${i + 1}: ${review.reviewer_name} (${review.star_rating}â˜…) ---`)
+    console.log(`Text: "${review.review_text}"`)
+    console.log(`Expected: ${expected}`)
+
+    // Generate AI response
+    try {
+      console.log('Generating AI response...')
+      const response = await generateReviewResponse(review, fullBusiness, [])
+
+      await supabase
+        .from('reviews')
+        .update({
+          ai_response: response.response,
+          response_status: 'draft',
+          sentiment: response.sentiment,
+          key_topics: response.keyTopics,
+        })
+        .eq('id', review.id)
+
+      console.log(`  Response: "${response.response.slice(0, 80)}..."`)
+      console.log(`  Sentiment: ${response.sentiment}`)
+    } catch (err) {
+      console.error(`  Response generation failed: ${err instanceof Error ? err.message : err}`)
+    }
+
+    // Analyze for disputes (only 1-2 star)
+    if (review.star_rating <= 2) {
+      try {
+        console.log('Analyzing for dispute...')
+        const dispute = await analyzeForDispute(review)
+
+        console.log(`  Disputable: ${dispute.isDisputable ? 'YES' : 'NO'}`)
+        console.log(`  Confidence: ${dispute.confidence}`)
+        console.log(`  Violations: ${dispute.violations.length > 0 ? dispute.violations.join(', ') : 'none'}`)
+        console.log(`  Reasoning: ${dispute.reasoning}`)
+
+        if (dispute.isDisputable) {
+          const { error: disputeError } = await supabase.from('review_disputes').insert({
+            review_id: review.id,
+            business_id: business.id,
+            reason: dispute.violations.join(', '),
+            ai_confidence_score:
+              dispute.confidence === 'high' ? 0.9 : dispute.confidence === 'medium' ? 0.6 : 0.3,
+            ai_analysis: dispute.reasoning,
+            violations: dispute.violations,
+            suggested_dispute_text: dispute.suggestedDisputeText,
+            confidence: dispute.confidence,
+            status: 'detected',
+          })
+
+          if (disputeError) {
+            console.error(`  Failed to save dispute: ${disputeError.message}`)
+          } else {
+            console.log('  âœ“ Dispute record created')
+          }
+        } else {
+          console.log('  âœ“ Not flagged (legitimate review)')
+        }
+      } catch (err) {
+        console.error(`  Dispute analysis failed: ${err instanceof Error ? err.message : err}`)
+      }
+    }
+
+    console.log('')
+  }
+
+  console.log('Done! Check /dashboard/recovery to see the results.')
+}
+
+seedDisputes()
 ===== C:\Users\mikeg\replyengine\scripts\seed.ts =====
 import { config } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
