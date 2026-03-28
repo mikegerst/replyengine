@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: 'What types of businesses can use ReplyEngine?',
-    a: 'Any business with a Google Business Profile — restaurants, dentists, plumbers, salons, law firms, auto shops, hotels, and more. If you get Google reviews, ReplyEngine works for you.',
+    a: 'Any business with a Google Business Profile can use ReplyEngine. Our most popular industries include restaurants, dental offices, plumbing and HVAC contractors, hair salons and barbershops, law firms, auto repair shops, hotels, medical practices, real estate agencies, and retail stores. If your business receives Google reviews, ReplyEngine works for you.',
   },
   {
     q: 'How does the AI know what to say?',
-    a: 'You configure your business type, preferred tone, and custom instructions. The AI reads each review, picks up on specific details the customer mentioned, and crafts a response that matches your brand voice.',
+    a: 'ReplyEngine uses Claude AI by Anthropic to generate responses. You configure your business type, preferred tone, and custom instructions. Claude reads each review, picks up on specific details the customer mentioned — like a dish they ordered, a service they received, or a staff member they interacted with — and crafts a response that matches your brand voice. The result sounds like you wrote it, not a bot.',
   },
   {
     q: 'Can I edit responses before posting?',
@@ -32,8 +32,12 @@ const FAQ_ITEMS = [
     a: 'ReplyEngine automatically scans every new review for signs of spam or policy violations. When it detects a suspicious review, it alerts you and walks you through Google\'s dispute process to get it removed.',
   },
   {
+    q: 'How does ReplyEngine detect fake reviews?',
+    a: 'ReplyEngine analyzes every incoming review using 12 detection signals, including reviewer history and profile age, geographic inconsistencies, language patterns common in fake reviews, timing anomalies such as review bursts, content that matches known spam templates, reviews clearly meant for a different business, and conflicts of interest. When multiple signals trigger, ReplyEngine flags the review and generates a pre-filled dispute report for submission to Google.',
+  },
+  {
     q: 'Is there a free trial?',
-    a: 'Yes. Every paid plan comes with a 14-day free trial, no credit card required. The Free plan is available forever with 5 AI responses per month.',
+    a: 'Yes. Every paid plan comes with a 14-day free trial, no credit card required. The Free plan is available forever with 5 AI responses per month. Enterprise tools like Birdeye charge $299+/month and Podium charges $249+/month — ReplyEngine starts free with paid plans at $19/month and $39/month, making it 10x more affordable for small businesses.',
   },
   {
     q: 'Can I cancel anytime?',
@@ -44,21 +48,39 @@ const FAQ_ITEMS = [
 const VALUE_PROPS = [
   {
     stat: '< 30 seconds',
-    description: 'Average time to generate a personalized, on-brand response to any review',
+    description:
+      'Average time to generate a personalized, on-brand response to any Google review',
   },
   {
-    stat: 'Every review',
-    description: 'Positive or negative — never leave a customer without a thoughtful reply again',
+    stat: '10x cheaper',
+    description:
+      'Than Birdeye ($299/mo) or Podium ($249/mo) — ReplyEngine starts free, paid plans from $19/mo',
   },
   {
-    stat: 'Your voice',
-    description: 'AI learns your tone and business details so responses sound like you wrote them',
+    stat: '12 signals',
+    description:
+      'Used to detect fake and policy-violating reviews for dispute and removal from Google',
   },
 ]
 
 export default function HomePage() {
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  }
+
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+
       {/* Header */}
       <header className="border-b border-gray-200 sticky top-0 bg-white/95 backdrop-blur-sm z-50">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -69,6 +91,12 @@ export default function HomePage() {
               className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:inline"
             >
               Free Tool
+            </Link>
+            <Link
+              href="/blog"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:inline"
+            >
+              Blog
             </Link>
             <Link
               href="/login"
@@ -94,6 +122,7 @@ export default function HomePage() {
         <p className="mt-6 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
           ReplyEngine uses AI to draft personalized responses to every Google review.
           Approve with one tap. Recover unhappy customers. Remove fake reviews.
+          Starting free — 10x more affordable than Birdeye or Podium.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
@@ -207,9 +236,9 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Shield</h3>
               <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                Remove fake and unfair reviews. Our AI detects policy violations and walks you through the removal process.
+                Remove fake and unfair reviews. Our AI analyzes 12 detection signals — including reviewer history, geographic inconsistencies, language patterns, timing anomalies, and known spam templates — to identify policy-violating reviews and walk you through Google&apos;s dispute process.
                 Even &ldquo;positive&rdquo; reviews can hurt your score. A 4-star review on a 4.5-star business drags you down.
-                ReplyEngine detects every review that&apos;s costing you &mdash; including reviews clearly meant for a different business.
+                ReplyEngine detects every review that&apos;s costing you — including reviews clearly meant for a different business.
               </p>
             </div>
 
@@ -222,7 +251,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Recover</h3>
               <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                Turn unhappy customers into loyal ones. AI-powered private outreach resolves complaints before they hurt your rating.
+                Turn unhappy customers into loyal ones. AI-powered private outreach via email and SMS resolves complaints before they hurt your rating.
+                Businesses using recovery outreach see up to 30% of unhappy customers improve their rating after a successful resolution.
               </p>
             </div>
 
@@ -236,6 +266,7 @@ export default function HomePage() {
               <h3 className="text-lg font-semibold text-gray-900">Amplify</h3>
               <p className="mt-2 text-sm text-gray-500 leading-relaxed">
                 Turn 5-star reviews into marketing. Every response subtly promotes your business to future customers reading your reviews.
+                Over 90% of consumers read Google reviews before visiting a local business. Make every response count.
               </p>
             </div>
           </div>
@@ -247,8 +278,8 @@ export default function HomePage() {
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-4">
           Simple, transparent pricing
         </h2>
-        <p className="text-center text-gray-500 text-sm mb-10">
-          Start free. Upgrade when you&apos;re ready.
+        <p className="text-center text-gray-500 text-sm mb-10 max-w-2xl mx-auto">
+          Enterprise tools like Birdeye charge $299+/month per location and Podium charges $249+/month — ReplyEngine gives you what matters for a fraction of the cost. Start free. Upgrade when you&apos;re ready.
         </p>
         <PricingToggle />
       </section>
@@ -266,61 +297,4 @@ export default function HomePage() {
             {VALUE_PROPS.map((v) => (
               <div key={v.stat} className="bg-white rounded-xl border border-gray-200 p-6 text-center">
                 <p className="text-2xl font-bold text-gray-900 mb-2">{v.stat}</p>
-                <p className="text-sm text-gray-500 leading-relaxed">{v.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== FAQ ===== */}
-      <section className="max-w-3xl mx-auto px-4 py-16 sm:py-20">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
-          Frequently asked questions
-        </h2>
-        <div className="space-y-6">
-          {FAQ_ITEMS.map((item) => (
-            <div key={item.q} className="border-b border-gray-100 pb-6 last:border-0">
-              <h3 className="text-sm font-semibold text-gray-900">{item.q}</h3>
-              <p className="mt-2 text-sm text-gray-500 leading-relaxed">{item.a}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== FINAL CTA ===== */}
-      <section className="bg-gray-900">
-        <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white">
-            Your competitors are responding to their reviews. Are you?
-          </h2>
-          <div className="mt-8">
-            <Link
-              href="/signup"
-              className="inline-block bg-white text-gray-900 px-8 py-3 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors"
-            >
-              Start Free Trial
-            </Link>
-          </div>
-          <p className="mt-4 text-xs text-gray-400">
-            No credit card required &middot; 14-day free trial &middot; Cancel anytime
-          </p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
-          <span>&copy; {new Date().getFullYear()} ReplyEngine. All rights reserved.</span>
-          <div className="flex items-center gap-4">
-            <Link href="/free" className="hover:text-gray-600 transition-colors">Free Tool</Link>
-            <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms</Link>
-            <Link href="/login" className="hover:text-gray-600 transition-colors">Sign in</Link>
-            <Link href="/signup" className="hover:text-gray-600 transition-colors">Get started</Link>
-          </div>
-        </div>
-      </footer>
-    </div>
-  )
-}
+                <p className="text-sm text-gray-500 leading-re

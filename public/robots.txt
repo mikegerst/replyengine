@@ -1,4 +1,5 @@
+# Default: allow all crawlers
 User-agent: *
 Allow: /
 
-Sitemap: https://replyengine.com/sitemap.xml
+# Explicitly al

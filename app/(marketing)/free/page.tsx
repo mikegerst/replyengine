@@ -38,8 +38,23 @@ const FAQ_ITEMS = [
 ]
 
 export default function FreeToolPage() {
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: { '@type': 'Answer', text: item.answer },
+    })),
+  }
+
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+
       {/* Header */}
       <header className="border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -52,6 +67,12 @@ export default function FreeToolPage() {
               className="text-sm text-gray-900 font-medium"
             >
               Free Tool
+            </Link>
+            <Link
+              href="/blog"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Blog
             </Link>
             <Link
               href="/login"
@@ -113,24 +134,4 @@ export default function FreeToolPage() {
           <div className="space-y-6">
             {FAQ_ITEMS.map((item) => (
               <div key={item.question}>
-                <h3 className="text-sm font-semibold text-gray-900">
-                  {item.question}
-                </h3>
-                <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">
-                  {item.answer}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 mt-16">
-        <div className="max-w-5xl mx-auto px-4 py-8 text-center text-xs text-gray-400">
-          &copy; {new Date().getFullYear()} ReplyEngine. All rights reserved.
-        </div>
-      </footer>
-    </div>
-  )
-}
+                <h3 className="text-sm font-semibold text-
