@@ -1,37 +1,53 @@
-# Default: allow all crawlers
+# Allow all crawlers to public pages, block private routes.
+# Rules are repeated per named UA group because crawlers pick a single
+# matching group and do not inherit Disallow rules from User-agent: *.
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
-# Explicitly allow AI search engine crawlers
 User-agent: GPTBot
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: CCBot
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: Amazonbot
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: anthropic-ai
 Allow: /
+Disallow: /api/
+Disallow: /dashboard/
 
 User-agent: cohere-ai
 Allow: /
-
-# Block private routes from all crawlers
-User-agent: *
 Disallow: /api/
 Disallow: /dashboard/
 

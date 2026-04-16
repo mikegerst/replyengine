@@ -8,13 +8,15 @@ interface PageProps {
   params: { slug: string }
 }
 
+export const dynamicParams = false
+
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }))
 }
 
 export function generateMetadata({ params }: PageProps): Metadata {
   const post = getPostBySlug(params.slug)
-  if (!post) return {}
+  if (!post) return { title: 'Not Found' }
 
   return {
     title: post.title,
@@ -43,7 +45,7 @@ function extractFaqItems(content: string): Array<{ question: string; answer: str
 
   const faqContent = faqMatch[0]
   const items: Array<{ question: string; answer: string }> = []
-  const questionRegex = /\*\*(.+?)\*\*\s*\n\n([^*]+?)(?=\n\n\*\*|\n\n##|$)/g
+  const questionRegex = /\*\*(.+?)\*\*\s*\n\n([\s\S]+?)(?=\n\n\*\*|\n\n##|$)/g
   let match = questionRegex.exec(faqContent)
   while (match) {
     items.push({ question: match[1].trim(), answer: match[2].trim() })

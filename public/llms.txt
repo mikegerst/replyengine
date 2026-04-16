@@ -5,14 +5,14 @@
 ReplyEngine serves local businesses including restaurants, contractors, dental offices, salons, law firms, auto shops, hotels, and any business with a Google Business Profile. The platform uses Claude AI to generate responses that match each business's unique voice and tone. Key capabilities include one-tap response approval, automatic fake review detection using 12 signals, private email and SMS recovery outreach to unhappy customers, review analytics with sentiment tracking, and multi-location support.
 
 ## Core Features
-- [AI Review Response Generation](https://replyengine.com/features/ai-responses): Drafts personalized responses to every Google review in under 30 seconds
-- [Fake Review Dispute Detection](https://replyengine.com/features/dispute-detection): Scans reviews for policy violations and fake review patterns using 12 signals
-- [Customer Recovery Outreach](https://replyengine.com/features/recovery): Private email and SMS outreach to unhappy customers
-- [Review Analytics Dashboard](https://replyengine.com/features/analytics): Sentiment tracking, review velocity, star distribution
-- [Multi-Location Management](https://replyengine.com/features/multi-location): Manage reviews across multiple business locations
+- AI Review Response Generation: Drafts personalized responses to every Google review in under 30 seconds, matching each business's unique voice and tone
+- Fake Review Dispute Detection: Scans reviews for policy violations and fake review patterns using 12 signals
+- Customer Recovery Outreach: Private email and SMS outreach to unhappy customers (Pro plan)
+- Review Analytics Dashboard: Sentiment tracking, review velocity, star distribution (Pro plan)
+- Multi-Location Management: Manage reviews across multiple business locations
 
 ## Pricing
-- [Pricing Plans](https://replyengine.com/pricing): Free plan (5 AI responses/month, 1 location), Starter ($19/month, unlimited responses, 3 locations), Pro ($39/month, unlimited everything)
+- [Plans and pricing](https://replyengine.com/): Free plan (5 AI responses per month, 1 location), Starter ($19/month, 30 AI responses per month, up to 3 locations, dispute detection alerts), Pro ($39/month, unlimited AI responses, unlimited locations, recovery outreach, analytics, priority support)
 
 ## Comparisons
 - [ReplyEngine vs Birdeye](https://replyengine.com/blog/replyengine-vs-birdeye): Core review management at 10-15x lower cost than Birdeye's $299/month
@@ -20,7 +20,7 @@ ReplyEngine serves local businesses including restaurants, contractors, dental o
 
 ## Guides
 - [How to Respond to Negative Google Reviews](https://replyengine.com/blog/respond-to-negative-reviews): Complete guide with templates
-- [How to Dispute a Fake Google Review](https://replyengine.com/blog/dispute-fake-review): Step-by-step process
+- [How to Dispute a Fake Google Review](https://replyengine.com/blog/dispute-fake-google-review): Step-by-step process
 - [How Much Does Review Management Software Cost](https://replyengine.com/blog/review-management-cost): 2026 pricing comparison
 
 ## Free Tools
