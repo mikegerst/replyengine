@@ -297,4 +297,65 @@ export default function HomePage() {
             {VALUE_PROPS.map((v) => (
               <div key={v.stat} className="bg-white rounded-xl border border-gray-200 p-6 text-center">
                 <p className="text-2xl font-bold text-gray-900 mb-2">{v.stat}</p>
-                <p className="text-sm text-gray-500 leading-re
+                <p className="text-sm text-gray-500 leading-relaxed">{v.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== FAQ ===== */}
+      <section className="max-w-3xl mx-auto px-4 py-16 sm:py-20">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-12">
+          Frequently asked questions
+        </h2>
+        <div className="space-y-6">
+          {FAQ_ITEMS.map((item) => (
+            <div key={item.q} className="border-b border-gray-100 pb-6 last:border-0">
+              <h3 className="text-sm font-semibold text-gray-900">{item.q}</h3>
+              <p className="mt-2 text-sm text-gray-500 leading-relaxed">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== FINAL CTA ===== */}
+      <section className="bg-gray-900">
+        <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white">
+            Your competitors are responding to their reviews. Are you?
+          </h2>
+          <p className="mt-4 text-sm text-gray-300 max-w-xl mx-auto">
+            Over 90% of consumers read Google reviews before visiting a local business. Businesses that respond to every review see up to 9% higher revenue.
+          </p>
+          <div className="mt-8">
+            <Link
+              href="/signup"
+              className="inline-block bg-white text-gray-900 px-8 py-3 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors"
+            >
+              Start Free Trial
+            </Link>
+          </div>
+          <p className="mt-4 text-xs text-gray-400">
+            No credit card required &middot; 14-day free trial &middot; Cancel anytime
+          </p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+          <span>&copy; {new Date().getFullYear()} ReplyEngine. All rights reserved.</span>
+          <div className="flex items-center gap-4">
+            <Link href="/free" className="hover:text-gray-600 transition-colors">Free Tool</Link>
+            <Link href="/blog" className="hover:text-gray-600 transition-colors">Blog</Link>
+            <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms</Link>
+            <Link href="/login" className="hover:text-gray-600 transition-colors">Sign in</Link>
+            <Link href="/signup" className="hover:text-gray-600 transition-colors">Get started</Link>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}

@@ -134,4 +134,24 @@ export default function FreeToolPage() {
           <div className="space-y-6">
             {FAQ_ITEMS.map((item) => (
               <div key={item.question}>
-                <h3 className="text-sm font-semibold text-
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {item.question}
+                </h3>
+                <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">
+                  {item.answer}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 mt-16">
+        <div className="max-w-5xl mx-auto px-4 py-8 text-center text-xs text-gray-400">
+          &copy; {new Date().getFullYear()} ReplyEngine. All rights reserved.
+        </div>
+      </footer>
+    </div>
+  )
+}

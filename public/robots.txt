@@ -2,4 +2,37 @@
 User-agent: *
 Allow: /
 
-# Explicitly al
+# Explicitly allow AI search engine crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# Block private routes from all crawlers
+User-agent: *
+Disallow: /api/
+Disallow: /dashboard/
+
+Sitemap: https://replyengine.com/sitemap.xml
